@@ -1,0 +1,30 @@
+policy: latency_aware
+timeouts:
+  connect_s: 1.0
+  read_s: 5.0
+backpressure:
+  max_in_flight: 500
+retries:
+  max_attempts: 2
+  budget_ratio: 0.1
+health:
+  interval_s: 2.0
+  failure_threshold: 3
+  recovery_successes: 2
+circuit_breaker:
+  consecutive_failures: 5
+  window: 20
+  error_rate: 0.5
+  open_s: 10
+scoring:
+  w_latency: 0.5
+  w_cpu: 0.3
+  w_error: 0.2
+  ewma_alpha: 0.2
+backends:
+  - id: backend-a
+    url: http://backend-a:9001
+  - id: backend-b
+    url: http://backend-b:9002
+  - id: backend-c
+    url: http://backend-c:9003
