@@ -1,1 +1,0 @@
-#start learning ai enigneer
