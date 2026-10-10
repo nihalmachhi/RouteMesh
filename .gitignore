@@ -1,19 +1,52 @@
+# Python environments
+venv/
+.venv/
+env/
+ENV/
+
+# Python artifacts
 __pycache__/
 *.py[cod]
+*$py.class
 *.egg-info/
-.venv/
-venv/
+
+# Environment variables
 .env
+.env.*
+!.env.example
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo/
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Tests and coverage
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/
-dist/
+
+# Build artifacts
 build/
+dist/
 node_modules/
 .next/
+*.tsbuildinfo
+
+# Generated benchmark output
 output/benchmarks/*
 !output/benchmarks/results.md
+
+# Logs and temporary files
 *.log
-*.tsbuildinfo
+*.tmp
+*.temp
+
+# OS files
+.DS_Store
+Thumbs.db
