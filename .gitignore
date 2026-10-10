@@ -13,7 +13,6 @@ __pycache__/
 # Environment variables
 .env
 .env.*
-!.env.example
 
 # Editors
 .vscode/

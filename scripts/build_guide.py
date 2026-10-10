@@ -94,7 +94,7 @@ t.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),PALE),("GRID",(0,0),(-1,-1),0.
 story += [t, Spacer(1, 8), p("The main process flow is observable at /metrics. The admin API provides current backend state and decisions; server-sent events update the dashboard feed. Metric labels stay bounded and do not include request IDs.", "Bodyx"), PageBreak(),
           p("3. Run the local system", "H1x"),
           p("Requirements: Docker Desktop with its Linux container engine running. Open PowerShell in the RouteMesh project folder."),
-          p("<b>1.</b> Create the local environment file: <font name='Courier'>Copy-Item .env.example .env</font>"),
+          p("<b>1.</b> Compose defaults work without a local environment file. You can use a local .env for overrides; Git ignores it. Set ROUTEMESH_ADMIN_TOKEN in that file to protect admin controls."),
           p("<b>2.</b> Start all services: <font name='Courier'>docker compose up --build</font>"),
           p("<b>3.</b> Open the dashboard at <font name='Courier'>http://localhost:3000</font>. API docs are at <font name='Courier'>http://localhost:8000/docs</font>; Prometheus is at <font name='Courier'>http://localhost:9090</font>."),
           p("<b>4.</b> Send sample traffic in another PowerShell window: <font name='Courier'>1..50 | ForEach-Object { Invoke-WebRequest -Uri http://localhost:8000/demo -Method GET }</font>"),
@@ -115,7 +115,7 @@ story += [t, Spacer(1, 8), p("The main process flow is observable at /metrics. T
           p("Benchmark integrity", "H2x"),
           p("The repository intentionally does not claim measured performance before a real benchmark has run. A generated report should be interpreted as a local experiment, not as a universal production guarantee."),
           Spacer(1, 10),
-          p("RouteMesh source: the supplied RouteMesh specification and the implementation in this repository. For exact commands and current settings, use README.md and .env.example.", "Smallx")]
+          p("RouteMesh source: the supplied RouteMesh specification and the implementation in this repository. For exact commands and current settings, use README.md and configs/routemesh.yaml.", "Smallx")]
 
 OUTPUT.parent.mkdir(parents=True, exist_ok=True)
 doc = SimpleDocTemplate(str(OUTPUT), pagesize=letter, rightMargin=0.65*inch, leftMargin=0.65*inch, topMargin=0.65*inch, bottomMargin=0.75*inch, title="RouteMesh - How It Works", author="RouteMesh Project")

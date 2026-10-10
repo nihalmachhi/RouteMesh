@@ -10,7 +10,7 @@ See [RouteMesh_How_It_Works.pdf](docs/RouteMesh_How_It_Works.pdf) for the reques
 
 Requirements: Docker Desktop with its engine running.
 
-1. Copy the local environment template: `Copy-Item .env.example .env` (PowerShell).
+1. Compose defaults work without a local environment file. You can use a local `.env` for overrides; it is ignored by Git. To protect admin controls, set `ROUTEMESH_ADMIN_TOKEN` in that file before starting the stack.
 2. Start the demo: `docker compose up --build`.
 3. Open the dashboard at http://localhost:3000; proxy API docs are at http://localhost:8000/docs.
 
