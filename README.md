@@ -2,7 +2,11 @@
 
 RouteMesh is an observable application-level reverse proxy. It selects a backend per request using health, circuit state, latency, CPU, errors, and in-flight work. It records why each selection happened and exposes metrics for policy comparisons.
 
-## Learning guide`n`nSee [RouteMesh_How_It_Works.pdf](docs/RouteMesh_How_It_Works.pdf) for the request-flow diagram, folder guide, run steps, and troubleshooting notes.`n`n## Quick start
+## Learning guide
+
+See [RouteMesh_How_It_Works.pdf](docs/RouteMesh_How_It_Works.pdf) for the request-flow diagram, folder guide, run steps, and troubleshooting notes.
+
+## Quick start
 
 Requirements: Docker Desktop with its engine running.
 
