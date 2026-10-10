@@ -1,0 +1,54 @@
+services:
+  proxy:
+    build: .
+    environment:
+      ROUTEMESH_CONFIG_PATH: /app/configs/routemesh.yaml
+      ROUTEMESH_LOG_LEVEL: INFO
+      ROUTEMESH_ADMIN_TOKEN: ${ROUTEMESH_ADMIN_TOKEN:-}
+    volumes:
+      - ./configs/routemesh.yaml:/app/configs/routemesh.yaml:ro
+    ports:
+      - "${ROUTEMESH_API_PORT:-8000}:8000"
+    depends_on:
+      backend-a:
+        condition: service_started
+      backend-b:
+        condition: service_started
+      backend-c:
+        condition: service_started
+  backend-a:
+    build: .
+    command: ["uvicorn", "routemesh.test_backends.app:app", "--host", "0.0.0.0", "--port", "9001"]
+    environment:
+      ROUTEMESH_BACKEND_ID: backend-a
+    expose: ["9001"]
+  backend-b:
+    build: .
+    command: ["uvicorn", "routemesh.test_backends.app:app", "--host", "0.0.0.0", "--port", "9002"]
+    environment:
+      ROUTEMESH_BACKEND_ID: backend-b
+    expose: ["9002"]
+  backend-c:
+    build: .
+    command: ["uvicorn", "routemesh.test_backends.app:app", "--host", "0.0.0.0", "--port", "9003"]
+    environment:
+      ROUTEMESH_BACKEND_ID: backend-c
+    expose: ["9003"]
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    command: ["--config.file=/etc/prometheus/prometheus.yml"]
+    volumes:
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - proxy
+  dashboard:
+    build:
+      context: ./dashboard
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "${DASHBOARD_PORT:-3000}:3000"
+    depends_on:
+      - proxy
