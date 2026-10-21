@@ -34,7 +34,6 @@ htmlcov/
 build/
 dist/
 node_modules/
-.next/
 *.tsbuildinfo
 
 # Generated benchmark output

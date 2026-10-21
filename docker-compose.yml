@@ -47,8 +47,8 @@ services:
     build:
       context: ./dashboard
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8000
+        VITE_API_URL: http://localhost:8000
     ports:
-      - "${DASHBOARD_PORT:-3000}:3000"
+      - "${DASHBOARD_PORT:-3000}:80"
     depends_on:
       - proxy
