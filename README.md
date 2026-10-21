@@ -4,7 +4,7 @@ RouteMesh is an observable application-level reverse proxy. It selects a backend
 
 ## Learning guide
 
-See [RouteMesh_How_It_Works.pdf](docs/RouteMesh_How_It_Works.pdf) for the request-flow diagram, folder guide, run steps, and troubleshooting notes.
+See [the architecture guide](docs/architecture.md) for request flow, system boundaries, and design trade-offs.
 
 ## Quick start
 
@@ -31,7 +31,7 @@ flowchart LR
     D --> H
     P --> M[/metrics Prometheus/]
     P --> X[/admin API and SSE/]
-    X --> UI[Next.js Dashboard]
+    X --> UI[React Dashboard]
     H --> R
 ```
 
@@ -44,7 +44,7 @@ flowchart LR
 - `src/routemesh/metrics`: Prometheus instruments, EWMA, rolling windows, decisions, SSE fanout.
 - `src/routemesh/test_backends`: demo-only controllable backends.
 - `src/routemesh/benchmarks`: Locust workload and report tooling.
-- `dashboard`: strict TypeScript operations UI.
+- `dashboard`: strict TypeScript React operations UI, bundled with Vite and served as static assets.
 - `tests`: deterministic unit tests and forwarding integration tests.
 - `configs`: routing and Prometheus settings.
 - `docs`: architecture, trade-offs, and benchmark methodology.
