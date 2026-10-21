@@ -84,7 +84,7 @@ folder_rows = [
     [p("src/routemesh/metrics", "Smallx"), p("Prometheus metrics, latency/error windows, decision log, and SSE events.", "Smallx")],
     [p("src/routemesh/test_backends", "Smallx"), p("Local demo backends with controls for slow, failing, or unavailable behavior.", "Smallx")],
     [p("src/routemesh/benchmarks", "Smallx"), p("Repeatable Locust workload and comparative report generation.", "Smallx")],
-    [p("dashboard/src", "Smallx"), p("Next.js operations dashboard: backend health, policy controls, behavior controls, and decision feed.", "Smallx")],
+    [p("dashboard/src", "React and Vite operations dashboard: backend health, policy controls, behavior controls, and decision feed.", "Smallx")],
     [p("configs", "Smallx"), p("Backend routing configuration and Prometheus scrape configuration.", "Smallx")],
     [p("tests", "Smallx"), p("Unit tests for decisions and safeguards plus forwarding integration tests.", "Smallx")],
     [p("docs", "Smallx"), p("Architecture, design decisions, benchmark method/results, and this guide.", "Smallx")],
