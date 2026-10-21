@@ -28,7 +28,7 @@ export function useRouteMesh(): DashboardSnapshot {
   useEffect(() => {
     void refresh();
     const poll = window.setInterval(() => void refresh(), 5000);
-    const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    const api = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
     const stream = new EventSource(api + "/admin/stream");
     stream.onopen = () => setState((current) => ({ ...current, connected: true }));
     stream.onmessage = () => void refresh();

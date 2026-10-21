@@ -1,4 +1,3 @@
-"use client";
 import { BackendCards } from "@/components/BackendCards";
 import { BehaviorControls } from "@/components/BehaviorControls";
 import { DecisionFeed } from "@/components/DecisionFeed";
