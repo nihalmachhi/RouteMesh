@@ -2,7 +2,7 @@
   <img src="assets/readme-icon.png" alt="RouteMesh icon" width="112" />
 </p>
 
-# RouteMesh
+<h1 align="center">RouteMesh</h1>
 
 RouteMesh is an observable application-level reverse proxy. It selects a backend per request using health, circuit state, latency, CPU, errors, and in-flight work. It records why each selection happened and exposes metrics for policy comparisons.
 
