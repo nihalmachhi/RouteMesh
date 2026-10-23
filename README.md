@@ -6,6 +6,14 @@ RouteMesh is an observable application-level reverse proxy. It selects a backend
 
 See [the architecture guide](docs/architecture.md) for request flow, system boundaries, and design trade-offs.
 
+## How it works
+
+RouteMesh filters out unhealthy or circuit-open backends, applies the selected routing policy to the remaining candidates, and forwards the request with a recorded selection reason.
+
+
+
+The demo compares round-robin, least-connections, and latency-aware policies using explicit heuristics. It is a single-process learning system, not a distributed control plane or a production benchmark.
+
 ## Quick start
 
 Requirements: Docker Desktop with its engine running.
@@ -76,3 +84,6 @@ Configuration is validated from `configs/routemesh.yaml`; `ROUTEMESH_CONFIG_PATH
 Retries are limited to GET, HEAD, OPTIONS, PUT, DELETE, or requests with an Idempotency-Key, and share a configurable global retry budget. Request bodies are bounded by `ROUTEMESH_MAX_BODY_BYTES`. Hop-by-hop headers are removed. The v1 path buffers bounded bodies; large streaming uploads, TLS termination, HTTP/2, WebSocket proxying, and dynamic cloud discovery are out of scope.
 
 Latency-aware scoring uses normalized EWMA latency, reported CPU, rolling error rate, and a small in-flight penalty. A score is an explicit heuristic, not machine learning. The in-memory registry and decision stream are process-local; use one proxy replica for this demo. PostgreSQL, a distributed control plane, and production-grade throughput are intentionally out of scope.
+
+
+
