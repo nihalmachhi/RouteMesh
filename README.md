@@ -31,20 +31,25 @@ The stack starts one proxy, three controllable FastAPI backends, Prometheus, and
 ## Request flow
 
 ```mermaid
-flowchart LR
-    C[Client] --> P[RouteMesh Proxy]
-    P -->|filter healthy + closed/probe circuits| R[Router]
-    R -->|pure policy decision + reason| F[HTTPX Forwarder]
-    F --> A[Backend A]
-    F --> B[Backend B]
-    F --> D[Backend C]
-    A --> H[Health checks]
-    B --> H
-    D --> H
-    P --> M[/metrics Prometheus/]
-    P --> X[/admin API and SSE/]
-    X --> UI[React Dashboard]
-    H --> R
+flowchart TD
+  A[Client request] --> B[FastAPI proxy checks limits and backpressure]
+  B --> C[Filter unhealthy backends and open circuits]
+  C --> D[Routing policy selects backend and records reason]
+  D --> E[HTTPX forwarder]
+  E --> F[Backend A]
+  E --> G[Backend B]
+  E --> H[Backend C]
+  F --> I[Response and outcome]
+  G --> I
+  H --> I
+  I --> B
+  F -. active health signals .-> J[Health checks and circuit state]
+  G -. active health signals .-> J
+  H -. active health signals .-> J
+  J --> C
+  B --> K[Prometheus metrics and decision stream]
+  L[Authenticated admin API and SSE] --> M[React dashboard]
+  K --> M
 ```
 
 ## Structure
