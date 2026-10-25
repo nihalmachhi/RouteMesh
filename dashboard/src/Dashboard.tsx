@@ -1,35 +1,55 @@
-import { BackendCards } from "@/components/BackendCards";
-import { BehaviorControls } from "@/components/BehaviorControls";
-import { DecisionFeed } from "@/components/DecisionFeed";
-import { PolicyComparison } from "@/components/PolicyComparison";
-import { PolicyControls } from "@/components/PolicyControls";
-import { useRouteMesh } from "@/hooks/useRouteMesh";
+import { useEffect, useState } from "react";
+import { SiteFooter } from "@/components/layout/SiteFooter";
+import { SiteHeader } from "@/components/layout/SiteHeader";
+import { useSimulator } from "@/features/simulator/useSimulator";
+import { ClosingSection } from "@/sections/ClosingSection";
+import { DecisionSection } from "@/sections/DecisionSection";
+import { FAQSection } from "@/sections/FAQSection";
+import { FailureSection } from "@/sections/FailureSection";
+import { FeatureGrid } from "@/sections/FeatureGrid";
+import { HeroSection } from "@/sections/HeroSection";
+import { PolicySection } from "@/sections/PolicySection";
+import { QuickStartSection } from "@/sections/QuickStartSection";
+import { ScopeSection } from "@/sections/ScopeSection";
+import type { BackendMode } from "@/features/simulator/model";
+
+function prefersReducedMotion(): boolean {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
 
 export default function DashboardPage() {
-  const state = useRouteMesh();
-  return (
-    <main className="mx-auto min-h-screen max-w-7xl px-5 py-8 md:px-10">
-      <header className="mb-8 flex items-end justify-between gap-4">
-        <div>
-          <p className="label text-accent">RouteMesh / Operations</p>
-          <h1 className="mt-2 text-2xl font-semibold">Traffic routing overview</h1>
-          <p className="mt-1 text-sm text-muted">Health, load, latency, and routing decisions</p>
-        </div>
-        <span className="text-xs text-muted">{state.connected ? "Live stream connected" : "Polling"}</span>
-      </header>
-      {state.error && <p role="alert" className="mb-5 rounded bg-red-50 p-3 text-sm text-red-800">{state.error}</p>}
-      <div className="space-y-5">
-        <PolicyControls active={state.policy} onChange={() => void state.refreshNow()} />
-        <BackendCards backends={state.backends} />
-        <BehaviorControls backendIds={state.backends.map((item) => item.id)} />
-        <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-          <DecisionFeed decisions={state.decisions} />
-          <PolicyComparison />
-        </div>
-      </div>
-      <footer className="mt-10 border-t border-line pt-4 text-xs text-muted">
-        Policies remain measurable baselines; no performance win is assumed before a controlled run.
-      </footer>
+  const simulator = useSimulator();
+  const [motionPaused, setMotionPaused] = useState(prefersReducedMotion);
+
+  useEffect(() => {
+    document.documentElement.dataset.motion = motionPaused ? "off" : "on";
+    return () => { delete document.documentElement.dataset.motion; };
+  }, [motionPaused]);
+
+  function tryPolicy(policy: Parameters<typeof simulator.choosePolicy>[0]) {
+    simulator.choosePolicy(policy);
+    document.getElementById("demo")?.scrollIntoView({ behavior: motionPaused ? "auto" : "smooth", block: "start" });
+  }
+
+  function breakBackend(id: string, mode: BackendMode) {
+    simulator.setBackendMode(id, mode);
+    simulator.setAutoTraffic(true);
+    document.getElementById("demo")?.scrollIntoView({ behavior: motionPaused ? "auto" : "smooth", block: "start" });
+  }
+
+  return <>
+    <SiteHeader motionPaused={motionPaused} onToggleMotion={() => setMotionPaused((paused) => !paused)} />
+    <main id="main">
+      <HeroSection state={simulator.state} onPolicy={simulator.choosePolicy} onAuto={simulator.toggleAutoTraffic} onBurst={simulator.sendBurst} onReset={simulator.reset} onBackendMode={simulator.setBackendMode} />
+      <PolicySection state={simulator.state} onTryPolicy={tryPolicy} />
+      <DecisionSection state={simulator.state} onPolicy={tryPolicy} />
+      <FailureSection onBreak={breakBackend} />
+      <FeatureGrid />
+      <QuickStartSection />
+      <ScopeSection />
+      <FAQSection />
+      <ClosingSection />
     </main>
-  );
+    <SiteFooter />
+  </>;
 }
