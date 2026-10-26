@@ -20,7 +20,6 @@ class BehaviorRequest(BaseModel):
     error_rate: float = Field(default=0, ge=0, le=1)
     cpu_percent: float = Field(default=10, ge=0, le=100)
     down: bool = False
-    flap_every: int = Field(default=0, ge=0, le=100_000)
 
 
 def create_backend_app(backend_id: str | None = None) -> FastAPI:
@@ -59,20 +58,6 @@ def create_backend_app(backend_id: str | None = None) -> FastAPI:
             "error_rate": current.error_rate,
             "cpu_percent": current.cpu_percent,
             "down": current.down,
-            "flap_every": current.flap_every,
-        }
-
-    @app.get("/admin/behavior")
-    async def get_behavior() -> dict[str, float | bool | int]:
-        """Return the current behavior so controlled benchmarks can restore it."""
-        current = await state.snapshot()
-        return {
-            "latency_ms": current.latency_ms,
-            "jitter_ms": current.jitter_ms,
-            "error_rate": current.error_rate,
-            "cpu_percent": current.cpu_percent,
-            "down": current.down,
-            "flap_every": current.flap_every,
         }
 
     @app.api_route(
@@ -81,16 +66,16 @@ def create_backend_app(backend_id: str | None = None) -> FastAPI:
     )
     async def handle(request: Request, path: str) -> Response:
         """Apply configured demo behavior and echo a safe response envelope."""
-        behavior, flapping_failure = await state.begin_request()
         async with state.lock:
             state.value.in_flight += 1
+            behavior = state.value
         try:
             if behavior.down:
                 return Response("backend is administratively down", status_code=503)
             delay_ms = behavior.latency_ms + randomizer.uniform(0, behavior.jitter_ms)
             if delay_ms > 0:
                 await asyncio.sleep(delay_ms / 1000)
-            if flapping_failure or randomizer.random() < behavior.error_rate:
+            if randomizer.random() < behavior.error_rate:
                 return Response("simulated backend error", status_code=503)
             body = await request.body()
             return Response(

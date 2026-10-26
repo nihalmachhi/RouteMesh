@@ -14,7 +14,6 @@ class CircuitBreaker:
     window_size: int = 20
     error_rate_limit: float = 0.5
     open_seconds: float = 10.0
-    max_open_seconds: float = 60.0
     recovery_successes: int = 3
     max_half_open_probes: int = 2
     clock: Clock = field(default_factory=SystemClock)
@@ -24,7 +23,6 @@ class CircuitBreaker:
     consecutive_successes: int = 0
     half_open_in_flight: int = 0
     outcomes: deque[bool] = field(default_factory=deque)
-    open_attempts: int = 0
 
     def can_select(self) -> bool:
         """Check if normal traffic or a recovery probe is eligible."""
@@ -56,7 +54,6 @@ class CircuitBreaker:
                 self.state = "closed"
                 self.consecutive_failures = 0
                 self.consecutive_successes = 0
-                self.open_attempts = 0
             return
         self.consecutive_failures = 0 if succeeded else self.consecutive_failures + 1
         failures = sum(not result for result in self.outcomes)
@@ -68,10 +65,7 @@ class CircuitBreaker:
 
     def _refresh_state(self) -> None:
         """Make an expired open circuit available for bounded recovery probes."""
-        retry_after = min(
-            self.open_seconds * (2 ** max(0, self.open_attempts - 1)), self.max_open_seconds
-        )
-        if self.state == "open" and self.clock.monotonic() - self.opened_at >= retry_after:
+        if self.state == "open" and self.clock.monotonic() - self.opened_at >= self.open_seconds:
             self.state = "half_open"
             self.half_open_in_flight = 0
             self.consecutive_successes = 0
@@ -80,6 +74,5 @@ class CircuitBreaker:
         """Open the circuit and reset any in-flight probe bookkeeping."""
         self.state = "open"
         self.opened_at = self.clock.monotonic()
-        self.open_attempts += 1
         self.half_open_in_flight = 0
         self.consecutive_successes = 0

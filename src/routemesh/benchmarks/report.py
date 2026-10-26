@@ -25,24 +25,16 @@ def read_summary(path: Path) -> dict[str, int | float]:
     }
 
 
-def render_comparison(results: dict[str, dict[str, dict[str, Any]]], output: Path) -> None:
-    """Create a grouped p95 chart from real Locust summaries only."""
+def render_comparison(results: dict[str, dict[str, Any]], output: Path) -> None:
+    """Create a compact p95 chart from real Locust summaries only."""
     import matplotlib.pyplot as plt
 
-    scenarios = list(results)
-    policies = list(results[scenarios[0]])
-    figure, axis = plt.subplots(figsize=(11, 5.5))
-    width = 0.8 / max(1, len(scenarios))
-    positions = list(range(len(policies)))
-    colors = ("#188fa3", "#8663bc", "#d88b2b")
-    for index, scenario in enumerate(scenarios):
-        offsets = [position - 0.4 + width / 2 + index * width for position in positions]
-        values = [results[scenario][policy]["p95_ms"] for policy in policies]
-        axis.bar(offsets, values, width, label=scenario, color=colors[index % len(colors)])
-    axis.set_xticks(positions, policies, rotation=12, ha="right")
+    names = list(results)
+    values = [results[name]["p95_ms"] for name in names]
+    figure, axis = plt.subplots(figsize=(8, 4.5))
+    axis.bar(names, values, color="#526b7a")
     axis.set_ylabel("p95 latency (ms)")
-    axis.set_title("RouteMesh routing policies across degraded backend scenarios")
-    axis.legend(title="Scenario")
+    axis.set_title("RouteMesh policy comparison")
     axis.grid(axis="y", alpha=0.25)
     figure.tight_layout()
     output.parent.mkdir(parents=True, exist_ok=True)

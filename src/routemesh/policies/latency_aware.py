@@ -27,7 +27,6 @@ class LatencyAwarePolicy:
         at: datetime,
         rotation: int,
         weights: dict[str, float],
-        context: dict[str, str] | None = None,
     ) -> RoutingDecision:
         """Choose the lowest explainable score with stable tie-breaking."""
         ordered = sorted(candidates, key=lambda item: item.backend_id)

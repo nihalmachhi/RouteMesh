@@ -29,7 +29,6 @@ class RoutingDecision:
     reason: str
     candidates: tuple[CandidateScore, ...]
     at: datetime
-    context: str | None = None
 
 
 class RoutingPolicy(Protocol):
@@ -45,5 +44,4 @@ class RoutingPolicy(Protocol):
         at: datetime,
         rotation: int,
         weights: dict[str, float],
-        context: dict[str, str] | None = None,
     ) -> RoutingDecision: ...

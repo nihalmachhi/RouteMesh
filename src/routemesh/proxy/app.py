@@ -31,17 +31,6 @@ logger = logging.getLogger(__name__)
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Create an isolated app instance and its shared asynchronous resources."""
     active_settings = settings or get_settings()
-    token = active_settings.admin_token
-    if token is None or len(token) < 32 or token.lower() in {
-        "changeme",
-        "change-me",
-        "changemeplease",
-        "your-token-here",
-        "example-token",
-    }:
-        raise ConfigurationError(
-            "ROUTEMESH_ADMIN_TOKEN must be set to a non-example value with at least 32 characters"
-        )
     config, backend_configs = load_config(active_settings.config_path)
     registry = BackendRegistry(backend_configs)
     metrics = ProxyMetrics()
