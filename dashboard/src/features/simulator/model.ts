@@ -1,4 +1,4 @@
-export type PolicyId = "round_robin" | "least_connections" | "latency_aware";
+export type PolicyId = "round_robin" | "least_connections" | "power_of_two_choices" | "ewma_latency" | "latency_aware" | "thompson_sampling";
 export type BackendMode = "normal" | "slow" | "failing" | "down";
 export type BreakerState = "closed" | "open" | "half_open";
 
@@ -215,6 +215,48 @@ function route(state: SimulatorState, candidates: BackendState[]): { backend: Ba
       reason: `fewest in-flight (${backend.inFlight})`,
       detail: "fewest in-flight requests",
       snapshots: ranked.map((candidate) => snapshot(candidate, state.elapsedMs)),
+    };
+  }
+
+  if (state.policy === "power_of_two_choices") {
+    const sorted = [...candidates].sort((a, b) => a.id.localeCompare(b.id));
+    const hash = [...`req-${state.requestSequence + 1}`].reduce((value, char) => (Math.imul(value, 31) + char.charCodeAt(0)) >>> 0, 0);
+    const first = hash % sorted.length;
+    const offset = sorted.length < 2 ? 0 : 1 + Math.floor(hash / sorted.length) % (sorted.length - 1);
+    const sampled = sorted.length < 2 ? [sorted[first]] : [sorted[first], sorted[(first + offset) % sorted.length]];
+    const backend = [...sampled].sort((a, b) => a.inFlight - b.inFlight || a.ewmaLatencyMs - b.ewmaLatencyMs || a.id.localeCompare(b.id))[0];
+    const ids = sampled.map((item) => item.id).join(" and ");
+    return {
+      backend,
+      reason: `lower load from ${ids}`,
+      detail: `power-of-two sampled ${ids} and chose the lower in-flight count`,
+      snapshots: sorted.map((candidate) => snapshot(candidate, state.elapsedMs, sampled.includes(candidate) ? candidate.inFlight : null)),
+    };
+  }
+
+  if (state.policy === "ewma_latency") {
+    const ranked = [...candidates].sort((a, b) => a.ewmaLatencyMs - b.ewmaLatencyMs || a.id.localeCompare(b.id));
+    const backend = ranked[0];
+    return {
+      backend,
+      reason: `${Math.round(backend.ewmaLatencyMs)} ms EWMA`,
+      detail: `lowest observed EWMA latency (${Math.round(backend.ewmaLatencyMs)} ms)`,
+      snapshots: ranked.map((candidate) => snapshot(candidate, state.elapsedMs, candidate.ewmaLatencyMs)),
+    };
+  }
+
+  if (state.policy === "thompson_sampling") {
+    const latencies = candidates.map((backend) => backend.ewmaLatencyMs);
+    const ranked = candidates.map((backend, index) => ({
+      backend,
+      reward: Math.max(0.02, Math.min(0.98, 1 - normalize(latencies[index], latencies))),
+    })).sort((a, b) => b.reward - a.reward || a.backend.id.localeCompare(b.backend.id));
+    const winner = ranked[0];
+    return {
+      backend: winner.backend,
+      reason: `simulated reward ${winner.reward.toFixed(2)}`,
+      detail: `browser illustration selects the current lowest-latency reward estimate (${winner.reward.toFixed(2)}); server Thompson sampling learns from outcomes`,
+      snapshots: ranked.map(({ backend, reward }) => snapshot(backend, state.elapsedMs, 1 - reward)),
     };
   }
 

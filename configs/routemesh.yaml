@@ -21,6 +21,9 @@ scoring:
   w_cpu: 0.3
   w_error: 0.2
   ewma_alpha: 0.2
+  bandit_target_latency_ms: 250
+  bandit_error_penalty: 0.8
+  bandit_forgetting: 0.99
 backends:
   - id: backend-a
     url: http://backend-a:9001

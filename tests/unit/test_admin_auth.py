@@ -23,6 +23,9 @@ def test_app_rejects_missing_or_example_admin_token() -> None:
     ("method", "path", "body"),
     [
         ("put", "/admin/policy", {"policy": "round_robin"}),
+        ("put", "/admin/policy", {"policy": "power_of_two_choices"}),
+        ("put", "/admin/policy", {"policy": "ewma_latency"}),
+        ("put", "/admin/policy", {"policy": "thompson_sampling"}),
         ("post", "/admin/reset", None),
         (
             "post",

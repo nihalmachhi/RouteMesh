@@ -24,7 +24,14 @@ class BackendYaml(BaseModel):
 class RouteConfig(BaseModel):
     """Validated application policy and resilience configuration."""
 
-    policy: Literal["round_robin", "least_connections", "latency_aware"]
+    policy: Literal[
+        "round_robin",
+        "least_connections",
+        "power_of_two_choices",
+        "ewma_latency",
+        "latency_aware",
+        "thompson_sampling",
+    ]
     timeouts: dict[str, float]
     backpressure: dict[str, int]
     retries: dict[str, float | int]
@@ -42,7 +49,15 @@ class RouteConfig(BaseModel):
             "retries": ("max_attempts", "budget_ratio"),
             "health": ("interval_s", "failure_threshold", "recovery_successes"),
             "circuit_breaker": ("consecutive_failures", "window", "error_rate", "open_s"),
-            "scoring": ("w_latency", "w_cpu", "w_error", "ewma_alpha"),
+            "scoring": (
+                "w_latency",
+                "w_cpu",
+                "w_error",
+                "ewma_alpha",
+                "bandit_target_latency_ms",
+                "bandit_error_penalty",
+                "bandit_forgetting",
+            ),
         }
         sections: dict[str, Mapping[str, float | int]] = {
             "timeouts": self.timeouts,
@@ -68,6 +83,12 @@ class RouteConfig(BaseModel):
             raise ValueError("circuit error rate must be between zero and one")
         if not 0 < float(self.scoring["ewma_alpha"]) <= 1:
             raise ValueError("EWMA alpha must be within (0, 1]")
+        if float(self.scoring["bandit_target_latency_ms"]) <= 0:
+            raise ValueError("bandit target latency must be positive")
+        if not 0 <= float(self.scoring["bandit_error_penalty"]) <= 1:
+            raise ValueError("bandit error penalty must be between zero and one")
+        if not 0 < float(self.scoring["bandit_forgetting"]) <= 1:
+            raise ValueError("bandit forgetting factor must be within (0, 1]")
         weights = [float(self.scoring[key]) for key in ("w_latency", "w_cpu", "w_error")]
         if min(weights) < 0 or abs(sum(weights) - 1.0) > 1e-6:
             raise ValueError("latency, CPU, and error weights must be non-negative and sum to one")

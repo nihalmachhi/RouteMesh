@@ -5,7 +5,10 @@ import { DecisionFeed } from "./DecisionFeed";
 const policies: { id: PolicyId; label: string }[] = [
   { id: "round_robin", label: "Round robin" },
   { id: "least_connections", label: "Least connections" },
+  { id: "power_of_two_choices", label: "Power of two" },
+  { id: "ewma_latency", label: "EWMA latency" },
   { id: "latency_aware", label: "Latency-aware" },
+  { id: "thompson_sampling", label: "Thompson sampling" },
 ];
 
 export function SimulatorDashboard({ state, onPolicy, onAuto, onBurst, onReset, onBackendMode }: {

@@ -6,8 +6,8 @@ const features: { title: string; body: string; kind: VisualKind; wide?: boolean 
   { title: "Backpressure", body: "Admission control caps in-flight requests before they reach the router.", kind: "backpressure" },
   { title: "Safe forwarding", body: "Hop-by-hop headers are removed and request bodies are bounded.", kind: "forwarding" },
   { title: "Retry budget", body: "Only idempotent requests are retried. Up to two attempts share one global budget.", kind: "retry", wide: true },
-  { title: "Pure, testable policies", body: "Policies make no network calls or hold global state. They return immutable decisions for deterministic tests.", kind: "policies", wide: true },
-  { title: "Reproducible benchmarks", body: "One command runs identical 60-second Locust samples per policy. No measured results are checked in.", kind: "benchmarks", wide: true },
+  { title: "Six testable routing policies", body: "Round robin, least connections, power-of-two choices, EWMA latency, scored routing, and contextual Thompson sampling.", kind: "policies", wide: true },
+  { title: "Reproducible benchmarks", body: "One command compares all six policies under identical Locust samples across slow, failing, and flapping backends. The report contains only measured results.", kind: "benchmarks", wide: true },
 ];
 
 export function FeatureGrid() {
@@ -32,7 +32,7 @@ function FeatureVisual({ kind }: { kind: VisualKind }) {
     case "forwarding": return <ChipList items={["X-Request-ID", "ROUTEMESH_MAX_BODY_BYTES"]} />;
     case "retry": return <><div className="feature-visual"><ChipList items={["GET", "HEAD", "OPTIONS", "PUT", "DELETE", "Idempotency-Key"]} /></div><ChipList items={["max_attempts: 2", "budget_ratio: 0.1"]} /></>;
     case "policies": return <div className="feature-visual terminal-visual"><b>candidates</b><span>→ immutable snapshots</span><br/><b>policy</b><span>→ backend, score, reason</span><br/><b>router</b><span>→ forwards and records outcome</span></div>;
-    case "benchmarks": return <div className="feature-visual terminal-visual"><b>$ make bench</b><br/>round-robin <span>· 60 s</span><br/>least-connections <span>· 60 s</span><br/>latency-aware <span>· 60 s</span><br/><span>→ CSV, JSON, and a p95 chart</span></div>;
+    case "benchmarks": return <div className="feature-visual terminal-visual"><b>$ make bench</b><br/>six policies <span>· same load</span><br/>three failure profiles <span>· repeatable</span><br/><span>→ CSV, JSON, and a p95 chart</span></div>;
   }
 }
 
