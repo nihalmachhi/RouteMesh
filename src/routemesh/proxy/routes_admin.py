@@ -35,11 +35,9 @@ class BehaviorUpdate(BaseModel):
 async def require_admin(
     request: Request, x_routemesh_admin_token: str | None = Header(default=None)
 ) -> None:
-    """Protect state-changing endpoints when an admin token is configured."""
+    """Require the configured token on every state-changing admin endpoint."""
     settings: Settings = request.app.state.settings
-    if settings.admin_token and not secrets.compare_digest(
-        settings.admin_token, x_routemesh_admin_token or ""
-    ):
+    if not secrets.compare_digest(settings.admin_token or "", x_routemesh_admin_token or ""):
         raise HTTPException(status_code=401, detail="invalid admin token")
 
 

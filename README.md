@@ -22,7 +22,7 @@ The demo compares round-robin, least-connections, and latency-aware policies usi
 
 Requirements: Docker Desktop with its engine running.
 
-1. Compose defaults work without a local environment file. You can use a local `.env` for overrides; it is ignored by Git. To protect admin controls, set `ROUTEMESH_ADMIN_TOKEN` in that file before starting the stack.
+1. Copy `.env.example` to `.env`, then set `ROUTEMESH_ADMIN_TOKEN` to a private value of at least 32 characters. Generate one with `python -c "import secrets; print(secrets.token_urlsafe(32))"`. The app refuses to start with a missing, short, or example token; `.env` is ignored by Git.
 2. Start the demo: `docker compose up --build`.
 3. Open the dashboard at http://localhost:3000; proxy API docs are at http://localhost:8000/docs.
 
@@ -81,7 +81,7 @@ The decision feed shows the chosen backend and reason. Metrics are at http://loc
 - `make check`: lint, type check, and tests.
 - `make bench`: run identical 60-second Locust samples for each policy and create raw CSV, JSON, and a p95 chart in `output/benchmarks`.
 
-Configuration is validated from `configs/routemesh.yaml`; `ROUTEMESH_CONFIG_PATH` selects another file. Environment variables use the `ROUTEMESH_` prefix. Configure `ROUTEMESH_ADMIN_TOKEN` outside local demo use to protect policy and backend behavior changes.
+Configuration is validated from `configs/routemesh.yaml`; `ROUTEMESH_CONFIG_PATH` selects another file. Environment variables use the `ROUTEMESH_` prefix. All admin mutations require `X-RouteMesh-Admin-Token`; without a strong configured `ROUTEMESH_ADMIN_TOKEN`, app creation fails closed.
 
 ## Reliability and limits
 
