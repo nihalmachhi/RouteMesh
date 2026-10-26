@@ -16,7 +16,7 @@ The displayed error rate is the final client-visible HTTP failure rate after ret
 
 ## Learning guide
 
-See [the architecture guide](docs/architecture.md) for request flow, system boundaries, and design trade-offs.
+See [the architecture guide](docs/architecture.md) for request flow, system boundaries, and design trade-offs, and [the threat model](docs/THREAT_MODEL.md) for admin controls and deployment limits.
 
 ## How it works
 
@@ -34,7 +34,7 @@ Requirements: Docker Desktop with its engine running. The same commands work on 
 2. Start the demo: `docker compose up --build`.
 3. Open the dashboard at http://localhost:3000; proxy API docs are at http://localhost:8000/docs.
 
-The stack starts one proxy, three controllable FastAPI backends, Prometheus, and the dashboard. Stop with `docker compose down`. No benchmark numbers are checked in as if measured; use `make bench` to create a local run.
+The stack starts one proxy, three controllable FastAPI backends, Prometheus, and the dashboard. Stop with `docker compose down`. Use `make bench` for the default 60-second comparison samples; the chart above is labeled with the shorter measured smoke-run conditions.
 
 ## Request flow
 
@@ -42,7 +42,7 @@ The stack starts one proxy, three controllable FastAPI backends, Prometheus, and
 flowchart LR
     C[Client] --> P[RouteMesh Proxy]
     P -->|filter healthy + closed/probe circuits| R[Router]
-    R -->|pure policy decision + reason| F[HTTPX Forwarder]
+    R -->|policy decision + reason| F[HTTPX Forwarder]
     F --> A[Backend A]
     F --> B[Backend B]
     F --> D[Backend C]
@@ -93,9 +93,9 @@ Configuration is validated from `configs/routemesh.yaml`; `ROUTEMESH_CONFIG_PATH
 
 ## Reliability and limits
 
-Retries are limited to GET, HEAD, OPTIONS, PUT, DELETE, or requests with an Idempotency-Key, and share a configurable global retry budget. Request bodies are bounded by `ROUTEMESH_MAX_BODY_BYTES`. Hop-by-hop headers are removed. The v1 path buffers bounded bodies; large streaming uploads, TLS termination, HTTP/2, WebSocket proxying, and dynamic cloud discovery are out of scope.
+Retries are limited to GET, HEAD, OPTIONS, PUT, DELETE, or requests with an Idempotency-Key, and share a configurable global retry budget. Request bodies are bounded by `ROUTEMESH_MAX_BODY_BYTES`. Hop-by-hop headers are removed. The proxy currently buffers bounded bodies; large streaming uploads, TLS termination, HTTP/2, WebSocket proxying, graceful backend draining, and dynamic service discovery are not implemented in this phase.
 
-Latency-aware scoring uses normalized EWMA latency, reported CPU, rolling error rate, and a small in-flight penalty. A score is an explicit heuristic, not machine learning. The in-memory registry and decision stream are process-local; use one proxy replica for this demo. PostgreSQL, a distributed control plane, and production-grade throughput are intentionally out of scope.
+Latency-aware scoring uses normalized EWMA latency, reported CPU, rolling error rate, and a small in-flight penalty. It is an explicit heuristic. Thompson sampling is a separate experimental contextual policy using a bounded latency/error reward and exponential forgetting; its posterior is process-local and has not been shown to adapt faster in an end-to-end changing-backend benchmark. The registry, breakers, and decision stream are also process-local; use one proxy replica for this demo. PostgreSQL, a distributed control plane, and production-grade throughput are intentionally out of scope.
 
 
 
