@@ -4,6 +4,7 @@ import asyncio
 import json
 import secrets
 from collections.abc import AsyncIterator
+from typing import cast
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -30,16 +31,15 @@ class BehaviorUpdate(BaseModel):
     error_rate: float = Field(default=0, ge=0, le=1)
     cpu_percent: float = Field(default=10, ge=0, le=100)
     down: bool = False
+    flap_every: int = Field(default=0, ge=0, le=100_000)
 
 
 async def require_admin(
     request: Request, x_routemesh_admin_token: str | None = Header(default=None)
 ) -> None:
-    """Protect state-changing endpoints when an admin token is configured."""
+    """Require the configured token on every state-changing admin endpoint."""
     settings: Settings = request.app.state.settings
-    if settings.admin_token and not secrets.compare_digest(
-        settings.admin_token, x_routemesh_admin_token or ""
-    ):
+    if not secrets.compare_digest(settings.admin_token or "", x_routemesh_admin_token or ""):
         raise HTTPException(status_code=401, detail="invalid admin token")
 
 
@@ -53,6 +53,7 @@ async def list_backends(request: Request) -> list[dict[str, object]]:
                 "id": item.backend_id,
                 "url": item.url,
                 "health_state": "HEALTHY" if item.healthy else "UNHEALTHY",
+                "draining": item.draining,
                 "circuit_state": request.app.state.router.breakers[item.backend_id].state,
                 "in_flight": item.in_flight,
                 "routed_requests": request.app.state.router.request_counts[item.backend_id],
@@ -129,3 +130,43 @@ async def set_backend_behavior(
     )
     response.raise_for_status()
     return {"backend_id": backend_id, "behavior": response.json()}
+
+
+@router.get("/admin/backends/{backend_id}/behavior")
+async def get_backend_behavior(backend_id: str, request: Request) -> dict[str, object]:
+    """Read controllable demo behavior for safe benchmark cleanup."""
+    snapshots = await request.app.state.registry.snapshots()
+    backend = next((item for item in snapshots if item.backend_id == backend_id), None)
+    if backend is None:
+        raise HTTPException(status_code=404, detail="unknown backend")
+    response = await request.app.state.http_client.get(f"{backend.url}/admin/behavior")
+    response.raise_for_status()
+    return cast(dict[str, object], response.json())
+
+
+@router.post("/admin/backends/{backend_id}/drain", dependencies=[Depends(require_admin)])
+async def drain_backend(backend_id: str, request: Request) -> dict[str, object]:
+    """Stop new requests to a backend; let existing requests complete normally."""
+    try:
+        backend = await request.app.state.registry.set_draining(backend_id, True)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="unknown backend") from exc
+    return {
+        "backend_id": backend_id,
+        "draining": True,
+        "in_flight": backend.in_flight,
+    }
+
+
+@router.post("/admin/backends/{backend_id}/resume", dependencies=[Depends(require_admin)])
+async def resume_backend(backend_id: str, request: Request) -> dict[str, object]:
+    """Allow new requests to reach a previously drained backend."""
+    try:
+        backend = await request.app.state.registry.set_draining(backend_id, False)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="unknown backend") from exc
+    return {
+        "backend_id": backend_id,
+        "draining": False,
+        "in_flight": backend.in_flight,
+    }

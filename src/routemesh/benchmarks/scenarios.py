@@ -12,8 +12,11 @@ class Scenario:
     error_rate: float
     cpu_percent: float
     down: bool = False
+    jitter_ms: float = 0
+    flap_every: int = 0
 
 
-BASELINE = Scenario("baseline", 5, 0.0, 15)
-DEGRADED = Scenario("degraded", 180, 0.15, 90)
-UNAVAILABLE = Scenario("unavailable", 0, 1.0, 100, True)
+SLOW = Scenario("slow", 180, 0.0, 90)
+FAILING = Scenario("failing", 10, 0.35, 75)
+FLAPPING = Scenario("flapping", 15, 0.0, 70, flap_every=4)
+SCENARIOS = {scenario.name: scenario for scenario in (SLOW, FAILING, FLAPPING)}

@@ -1,6 +1,6 @@
 const inScope = [
   "One proxy with bounded request bodies and safe headers",
-  "Three pure, unit-tested routing policies",
+  "Six unit-tested routing policies, including a contextual bandit",
   "Retries for idempotent requests under a shared budget",
   "Prometheus metrics and an SSE-driven React dashboard",
   "make bench for identical 60-second Locust samples per policy",

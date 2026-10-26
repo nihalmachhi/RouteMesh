@@ -18,7 +18,8 @@ from routemesh.metrics.ewma import Ewma
 from routemesh.metrics.prometheus import ProxyMetrics
 from routemesh.metrics.rolling_window import RollingWindow
 from routemesh.policies.base import RoutingDecision
-from routemesh.policies.registry import get_policy
+from routemesh.policies.registry import create_policies, get_policy
+from routemesh.policies.thompson_sampling import ThompsonSamplingPolicy
 from routemesh.proxy.forwarder import HttpForwarder
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,7 @@ class PolicyState:
     def __init__(self, name: str) -> None:
         get_policy(name)
         self.name = name
+        self.policies = create_policies()
         self.rotation = 0
         self.lock = asyncio.Lock()
 
@@ -74,6 +76,7 @@ class PolicyState:
         """Reset deterministic policy rotation between benchmark samples."""
         async with self.lock:
             self.rotation = 0
+            self.policies = create_policies()
 
 
 class ProxyRouter:
@@ -103,8 +106,9 @@ class ProxyRouter:
                 int(config.circuit_breaker["window"]),
                 float(config.circuit_breaker["error_rate"]),
                 float(config.circuit_breaker["open_s"]),
-                int(config.health["recovery_successes"]),
+                recovery_successes=int(config.health["recovery_successes"]),
                 clock=self.clock,
+                max_open_seconds=float(config.circuit_breaker["max_open_s"]),
             )
             for backend in config.backends
         }
@@ -126,8 +130,9 @@ class ProxyRouter:
                 int(self.config.circuit_breaker["window"]),
                 float(self.config.circuit_breaker["error_rate"]),
                 float(self.config.circuit_breaker["open_s"]),
-                int(self.config.health["recovery_successes"]),
+                recovery_successes=int(self.config.health["recovery_successes"]),
                 clock=self.clock,
+                max_open_seconds=float(self.config.circuit_breaker["max_open_s"]),
             )
             for backend in self.config.backends
         }
@@ -151,28 +156,38 @@ class ProxyRouter:
             metric.clear()
         self.events.publish({"type": "benchmark.reset"})
 
-    async def choose(self, request_id: str, excluded: set[str]) -> tuple[RoutingDecision, str]:
+    async def choose(
+        self, request: Request, path: str, request_id: str, excluded: set[str]
+    ) -> tuple[RoutingDecision, str]:
         """Filter unhealthy/open backends then invoke the configured pure policy."""
         snapshots = await self.registry.snapshots()
         available = []
         for item in snapshots:
             breaker = self.breakers[item.backend_id]
             item.circuit_state = breaker.state
-            if item.backend_id not in excluded and item.healthy and breaker.can_select():
+            if (
+                item.backend_id not in excluded
+                and item.healthy
+                and not item.draining
+                and breaker.can_select()
+            ):
                 available.append(item)
         if not available:
             raise NoHealthyBackend("no healthy backend is currently eligible")
         policy_name, rotation = await self.policy.current()
-        decision = get_policy(policy_name).select(
+        decision = self.policy.policies[policy_name].select(
             available,
             request_id=request_id,
             at=self.clock.utc_now(),
             rotation=rotation,
             weights=self.config.scoring,
+            context=self._request_context(request, path),
         )
         breaker = self.breakers[decision.chosen_backend_id]
         if not breaker.allow_request():
-            return await self.choose(request_id, excluded | {decision.chosen_backend_id})
+            return await self.choose(
+                request, path, request_id, excluded | {decision.chosen_backend_id}
+            )
         await self.policy.advance()
         self.decisions.append(decision)
         self.request_counts[decision.chosen_backend_id] += 1
@@ -210,7 +225,7 @@ class ProxyRouter:
             decision: RoutingDecision | None = None
             attempt_started = self.clock.monotonic()
             try:
-                decision, backend_url = await self.choose(request_id, excluded)
+                decision, backend_url = await self.choose(request, path, request_id, excluded)
                 response, elapsed = await self._forward_once(
                     request, path, request_id, decision, backend_url
                 )
@@ -235,6 +250,18 @@ class ProxyRouter:
         if last_error is not None:
             raise last_error
         raise NoHealthyBackend("no backend returned a usable response")
+
+    @staticmethod
+    def _request_context(request: Request, path: str) -> dict[str, str]:
+        """Map arbitrary paths and sizes into bounded contextual bandit features."""
+        first_segment = path.strip("/").split("/", maxsplit=1)[0].lower()
+        path_class = first_segment if first_segment in {"api", "static", "health"} else "other"
+        try:
+            size = int(request.headers.get("content-length", "0"))
+        except ValueError:
+            size = 0
+        size_class = "large" if size >= 1_000_000 else "medium" if size >= 16_384 else "small"
+        return {"path_class": path_class, "size_class": size_class}
 
     async def _forward_once(
         self,
@@ -261,6 +288,15 @@ class ProxyRouter:
     ) -> None:
         """Update latency, error window, breaker, and request metrics."""
         backend_id = decision.chosen_backend_id
+        policy = self.policy.policies[decision.policy]
+        if decision.context is not None and isinstance(policy, ThompsonSamplingPolicy):
+            policy.observe(
+                decision.context,
+                backend_id,
+                elapsed * 1000,
+                failed,
+                self.config.scoring,
+            )
         latency = self.latencies[backend_id].update(elapsed * 1000)
         error_rate = self.windows[backend_id].add(not failed)
         self.breakers[backend_id].record(not failed)

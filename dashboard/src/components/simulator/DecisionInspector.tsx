@@ -3,7 +3,10 @@ import { type CandidateSnapshot, type DecisionRecord, type PolicyId } from "@/fe
 const policyLabels: Record<PolicyId, string> = {
   round_robin: "Round robin",
   least_connections: "Least connections",
+  power_of_two_choices: "Power of two choices",
+  ewma_latency: "EWMA latency",
   latency_aware: "Latency-aware",
+  thompson_sampling: "Thompson sampling",
 };
 
 export function DecisionInspector({ decision }: { decision: DecisionRecord | null }) {
@@ -49,10 +52,12 @@ function CandidateRow({ candidate, chosen, policy, maxScore }: {
     <li className={`inspector-row${chosen ? " chosen" : ""}`}>
       <div className="inspector-row-heading">
         <span>{candidate.backendId}{chosen ? " · chosen" : ""}</span>
-        <span>{policy === "latency_aware" ? `score ${(candidate.score ?? 0).toFixed(3)}` : policy === "least_connections" ? `${candidate.inFlight} in flight` : ""}</span>
+        <span>{policy === "latency_aware" ? `score ${(candidate.score ?? 0).toFixed(3)}` : policy === "least_connections" || policy === "power_of_two_choices" ? `${candidate.inFlight} in flight` : policy === "ewma_latency" ? `${Math.round(candidate.latencyMs)} ms EWMA` : policy === "thompson_sampling" ? `reward ${((1 - (candidate.score ?? 1))).toFixed(2)}` : ""}</span>
       </div>
       {policy === "latency_aware" && <span className="bar"><i style={{ width: `${scoreWidth}%` }} /></span>}
       {policy === "least_connections" && <span className="bar"><i style={{ width: `${loadWidth}%` }} /></span>}
+      {policy === "power_of_two_choices" && candidate.score !== null && <span className="bar"><i style={{ width: `${loadWidth}%` }} /></span>}
+      {policy === "thompson_sampling" && <span className="bar"><i style={{ width: `${Math.max(0, Math.min(100, (1 - (candidate.score ?? 1)) * 100))}%` }} /></span>}
       <p>latency {Math.round(candidate.latencyMs)} ms · cpu {Math.round(candidate.cpu * 100)}% · errors {Math.round(candidate.errorRate * 100)}% · in flight {candidate.inFlight}</p>
     </li>
   );

@@ -19,6 +19,7 @@ class RoundRobinPolicy:
         at: datetime,
         rotation: int,
         weights: dict[str, float],
+        context: dict[str, str] | None = None,
     ) -> RoutingDecision:
         """Rotate through the already filtered candidates without doing I/O."""
         ordered = sorted(candidates, key=lambda item: item.backend_id)

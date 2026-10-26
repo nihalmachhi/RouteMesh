@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="ROUTEMESH_", env_file=".env", extra="ignore")
     config_path: Path = Path("configs/routemesh.yaml")
     log_level: str = "INFO"
-    admin_token: str = ""
+    admin_token: str | None = None
     request_id_header: str = "X-Request-ID"
     max_body_bytes: int = Field(default=10_000_000, ge=1024)
     dashboard_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]

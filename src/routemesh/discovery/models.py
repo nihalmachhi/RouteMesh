@@ -19,6 +19,7 @@ class BackendSnapshot:
     backend_id: str
     url: str
     healthy: bool = False
+    draining: bool = False
     circuit_state: str = "closed"
     in_flight: int = 0
     ewma_latency_ms: float = 0.0

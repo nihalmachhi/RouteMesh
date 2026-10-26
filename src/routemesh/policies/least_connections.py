@@ -19,6 +19,7 @@ class LeastConnectionsPolicy:
         at: datetime,
         rotation: int,
         weights: dict[str, float],
+        context: dict[str, str] | None = None,
     ) -> RoutingDecision:
         """Break equal-load ties by backend ID for reproducible decisions."""
         ordered = sorted(candidates, key=lambda item: (item.in_flight, item.backend_id))
