@@ -4,6 +4,7 @@ import asyncio
 import json
 import secrets
 from collections.abc import AsyncIterator
+from typing import cast
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -30,6 +31,7 @@ class BehaviorUpdate(BaseModel):
     error_rate: float = Field(default=0, ge=0, le=1)
     cpu_percent: float = Field(default=10, ge=0, le=100)
     down: bool = False
+    flap_every: int = Field(default=0, ge=0, le=100_000)
 
 
 async def require_admin(
@@ -127,3 +129,15 @@ async def set_backend_behavior(
     )
     response.raise_for_status()
     return {"backend_id": backend_id, "behavior": response.json()}
+
+
+@router.get("/admin/backends/{backend_id}/behavior")
+async def get_backend_behavior(backend_id: str, request: Request) -> dict[str, object]:
+    """Read controllable demo behavior for safe benchmark cleanup."""
+    snapshots = await request.app.state.registry.snapshots()
+    backend = next((item for item in snapshots if item.backend_id == backend_id), None)
+    if backend is None:
+        raise HTTPException(status_code=404, detail="unknown backend")
+    response = await request.app.state.http_client.get(f"{backend.url}/admin/behavior")
+    response.raise_for_status()
+    return cast(dict[str, object], response.json())

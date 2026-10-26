@@ -6,6 +6,14 @@
 
 RouteMesh is an observable application-level reverse proxy. It selects a backend per request using health, circuit state, latency, CPU, errors, and in-flight work. It records why each selection happened and exposes metrics for policy comparisons.
 
+## Measured policy comparison
+
+![Measured p95 latency across RouteMesh policies and backend conditions](docs/benchmarks/policy-comparison.png)
+
+This quick local comparison uses 30 users, a 5 users/second ramp, and 10 seconds per policy/scenario on Windows 11. It is a short smoke benchmark, not a stable production capacity claim. See [the complete measured table and conditions](docs/benchmarks/results.md); rerun with the default 60-second samples using `make bench`.
+
+The displayed error rate is the final client-visible HTTP failure rate after retries; it is not the backend attempt error rate.
+
 ## Learning guide
 
 See [the architecture guide](docs/architecture.md) for request flow, system boundaries, and design trade-offs.
@@ -16,13 +24,13 @@ RouteMesh filters out unhealthy or circuit-open backends, applies the selected r
 
 
 
-The demo compares round-robin, least-connections, and latency-aware policies using explicit heuristics. It is a single-process learning system, not a distributed control plane or a production benchmark.
+The demo compares round-robin, least-connections, power-of-two choices, EWMA latency, scored routing, and contextual Thompson sampling. The bandit uses an experimental in-memory reward model; it is not a production benchmark or distributed control plane.
 
 ## Quick start
 
-Requirements: Docker Desktop with its engine running.
+Requirements: Docker Desktop with its engine running. The same commands work on Windows, macOS, and Linux.
 
-1. Copy `.env.example` to `.env`, then set `ROUTEMESH_ADMIN_TOKEN` to a private value of at least 32 characters. Generate one with `python -c "import secrets; print(secrets.token_urlsafe(32))"`. The app refuses to start with a missing, short, or example token; `.env` is ignored by Git.
+1. Copy `.env.example` to `.env` (`Copy-Item .env.example .env` in PowerShell; `cp .env.example .env` in macOS/Linux shells). Set `ROUTEMESH_ADMIN_TOKEN` to a private value of at least 32 characters. Generate one with `python -c "import secrets; print(secrets.token_urlsafe(32))"`. The app refuses to start with a missing, short, or example token; `.env` is ignored by Git.
 2. Start the demo: `docker compose up --build`.
 3. Open the dashboard at http://localhost:3000; proxy API docs are at http://localhost:8000/docs.
 
@@ -50,7 +58,7 @@ flowchart LR
 ## Structure
 
 - `src/routemesh/proxy`: FastAPI app, catch-all proxy route, router, forwarder, backpressure, admin API.
-- `src/routemesh/policies`: pure round-robin, least-connections, and latency-aware strategies.
+- `src/routemesh/policies`: isolated round-robin, least-connections, power-of-two, EWMA latency, scored, and contextual bandit strategies.
 - `src/routemesh/discovery`: validated YAML and backend state registry.
 - `src/routemesh/health`: active checks and circuit breaker.
 - `src/routemesh/metrics`: Prometheus instruments, EWMA, rolling windows, decisions, SSE fanout.
@@ -79,7 +87,7 @@ The decision feed shows the chosen backend and reason. Metrics are at http://loc
 - `make typecheck`: strict mypy.
 - `make test`: pytest.
 - `make check`: lint, type check, and tests.
-- `make bench`: run identical 60-second Locust samples for each policy and create raw CSV, JSON, and a p95 chart in `output/benchmarks`.
+- `make bench`: run identical 60-second Locust samples for each policy against slow, failing, and flapping backends. It creates raw CSV, JSON, and a p95 chart in `output/benchmarks`.
 
 Configuration is validated from `configs/routemesh.yaml`; `ROUTEMESH_CONFIG_PATH` selects another file. Environment variables use the `ROUTEMESH_` prefix. All admin mutations require `X-RouteMesh-Admin-Token`; without a strong configured `ROUTEMESH_ADMIN_TOKEN`, app creation fails closed.
 
