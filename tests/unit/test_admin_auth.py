@@ -27,6 +27,8 @@ def test_app_rejects_missing_or_example_admin_token() -> None:
         ("put", "/admin/policy", {"policy": "ewma_latency"}),
         ("put", "/admin/policy", {"policy": "thompson_sampling"}),
         ("post", "/admin/reset", None),
+        ("post", "/admin/backends/backend-a/drain", None),
+        ("post", "/admin/backends/backend-a/resume", None),
         (
             "post",
             "/admin/backends/backend-a/behavior",
@@ -55,3 +57,15 @@ def test_valid_token_can_change_policy() -> None:
         )
     assert response.status_code == 200
     assert response.json() == {"policy": "round_robin"}
+
+
+def test_admin_can_drain_and_resume_backend():
+    app = create_app(Settings(config_path=CONFIG, admin_token=TOKEN))
+    headers = {"X-RouteMesh-Admin-Token": TOKEN}
+    with TestClient(app) as client:
+        drained = client.post("/admin/backends/backend-a/drain", headers=headers)
+        resumed = client.post("/admin/backends/backend-a/resume", headers=headers)
+    assert drained.status_code == 200
+    assert drained.json()["draining"] is True
+    assert resumed.status_code == 200
+    assert resumed.json()["draining"] is False

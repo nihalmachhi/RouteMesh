@@ -106,8 +106,9 @@ class ProxyRouter:
                 int(config.circuit_breaker["window"]),
                 float(config.circuit_breaker["error_rate"]),
                 float(config.circuit_breaker["open_s"]),
-                int(config.health["recovery_successes"]),
+                recovery_successes=int(config.health["recovery_successes"]),
                 clock=self.clock,
+                max_open_seconds=float(config.circuit_breaker["max_open_s"]),
             )
             for backend in config.backends
         }
@@ -129,8 +130,9 @@ class ProxyRouter:
                 int(self.config.circuit_breaker["window"]),
                 float(self.config.circuit_breaker["error_rate"]),
                 float(self.config.circuit_breaker["open_s"]),
-                int(self.config.health["recovery_successes"]),
+                recovery_successes=int(self.config.health["recovery_successes"]),
                 clock=self.clock,
+                max_open_seconds=float(self.config.circuit_breaker["max_open_s"]),
             )
             for backend in self.config.backends
         }
@@ -163,7 +165,12 @@ class ProxyRouter:
         for item in snapshots:
             breaker = self.breakers[item.backend_id]
             item.circuit_state = breaker.state
-            if item.backend_id not in excluded and item.healthy and breaker.can_select():
+            if (
+                item.backend_id not in excluded
+                and item.healthy
+                and not item.draining
+                and breaker.can_select()
+            ):
                 available.append(item)
         if not available:
             raise NoHealthyBackend("no healthy backend is currently eligible")

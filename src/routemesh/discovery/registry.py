@@ -57,6 +57,13 @@ class BackendRegistry:
             backend.in_flight = max(0, backend.in_flight + delta)
             return backend.in_flight
 
+    async def set_draining(self, backend_id: str, draining: bool) -> BackendSnapshot:
+        """Stop new routing to a backend while preserving its active requests."""
+        async with self._lock:
+            backend = self._items[backend_id]
+            backend.draining = draining
+            return replace(backend)
+
     async def update_runtime(
         self,
         backend_id: str,

@@ -16,6 +16,7 @@ circuit_breaker:
   window: 20
   error_rate: 0.5
   open_s: 10
+  max_open_s: 60
 scoring:
   w_latency: 0.5
   w_cpu: 0.3

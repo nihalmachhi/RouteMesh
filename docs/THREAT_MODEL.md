@@ -20,11 +20,14 @@
 - Request body size is bounded; hop-by-hop headers are removed; redirects are not followed.
 - Retries are limited to safe methods or idempotency-key requests and a shared retry budget.
 - Routing inputs are validated; unknown policy names and backend IDs fail explicitly.
+- Backend drain/resume controls require the admin token; draining prevents new selections while existing requests finish.
+- Circuit recovery delays increase exponentially up to a configured maximum after failed probes.
 - Request IDs are bounded and excluded from Prometheus labels.
 
 ## Known limits
 
 - This learning service does not terminate TLS, authenticate users, or provide distributed admin authorization.
+- Slow-start, TLS, HTTP/2, WebSocket forwarding, streaming request bodies, and dynamic service discovery are not implemented yet.
 - The demo backend behavior API has no separate credential because it is meant for a private local Compose network. Do not expose those services publicly.
 - Registry, circuit-breaker, bandit posterior, and decision stream state are process-local and reset on restart.
 - Configure TLS and network policy at a trusted ingress before exposing a deployment. Do not treat this demo as a production edge proxy.

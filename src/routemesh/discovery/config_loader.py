@@ -48,7 +48,9 @@ class RouteConfig(BaseModel):
             "backpressure": ("max_in_flight",),
             "retries": ("max_attempts", "budget_ratio"),
             "health": ("interval_s", "failure_threshold", "recovery_successes"),
-            "circuit_breaker": ("consecutive_failures", "window", "error_rate", "open_s"),
+            "circuit_breaker": (
+                "consecutive_failures", "window", "error_rate", "open_s", "max_open_s"
+            ),
             "scoring": (
                 "w_latency",
                 "w_cpu",
@@ -81,6 +83,10 @@ class RouteConfig(BaseModel):
             raise ValueError("retry budget ratio must be between zero and one")
         if not 0 <= float(self.circuit_breaker["error_rate"]) <= 1:
             raise ValueError("circuit error rate must be between zero and one")
+        open_seconds = float(self.circuit_breaker["open_s"])
+        max_open_seconds = float(self.circuit_breaker["max_open_s"])
+        if open_seconds <= 0 or max_open_seconds < open_seconds:
+            raise ValueError("circuit max_open_s must be at least the positive open_s value")
         if not 0 < float(self.scoring["ewma_alpha"]) <= 1:
             raise ValueError("EWMA alpha must be within (0, 1]")
         if float(self.scoring["bandit_target_latency_ms"]) <= 0:

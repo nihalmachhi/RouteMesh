@@ -53,6 +53,7 @@ async def list_backends(request: Request) -> list[dict[str, object]]:
                 "id": item.backend_id,
                 "url": item.url,
                 "health_state": "HEALTHY" if item.healthy else "UNHEALTHY",
+                "draining": item.draining,
                 "circuit_state": request.app.state.router.breakers[item.backend_id].state,
                 "in_flight": item.in_flight,
                 "routed_requests": request.app.state.router.request_counts[item.backend_id],
@@ -141,3 +142,31 @@ async def get_backend_behavior(backend_id: str, request: Request) -> dict[str, o
     response = await request.app.state.http_client.get(f"{backend.url}/admin/behavior")
     response.raise_for_status()
     return cast(dict[str, object], response.json())
+
+
+@router.post("/admin/backends/{backend_id}/drain", dependencies=[Depends(require_admin)])
+async def drain_backend(backend_id: str, request: Request) -> dict[str, object]:
+    """Stop new requests to a backend; let existing requests complete normally."""
+    try:
+        backend = await request.app.state.registry.set_draining(backend_id, True)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="unknown backend") from exc
+    return {
+        "backend_id": backend_id,
+        "draining": True,
+        "in_flight": backend.in_flight,
+    }
+
+
+@router.post("/admin/backends/{backend_id}/resume", dependencies=[Depends(require_admin)])
+async def resume_backend(backend_id: str, request: Request) -> dict[str, object]:
+    """Allow new requests to reach a previously drained backend."""
+    try:
+        backend = await request.app.state.registry.set_draining(backend_id, False)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="unknown backend") from exc
+    return {
+        "backend_id": backend_id,
+        "draining": False,
+        "in_flight": backend.in_flight,
+    }
