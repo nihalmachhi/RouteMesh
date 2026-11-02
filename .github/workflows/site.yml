@@ -1,0 +1,84 @@
+name: RouteMesh site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/site.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python project for policy parity checks
+        run: python -m pip install -e .
+
+      - name: Install site dependencies
+        working-directory: site
+        run: npm ci
+
+      - name: Lint
+        working-directory: site
+        run: npm run lint
+
+      - name: Type check
+        working-directory: site
+        run: npm run typecheck
+
+      - name: Test
+        working-directory: site
+        run: npm test
+
+      - name: Verify Python policy fixture is current
+        run: |
+          python site/scripts/export_fixtures.py
+          git diff --exit-code -- site/src/features/simulator/__fixtures__/policy-decisions.json
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Build site
+        working-directory: site
+        run: npm run build
+        env:
+          VITE_BASE: /RouteMesh/
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

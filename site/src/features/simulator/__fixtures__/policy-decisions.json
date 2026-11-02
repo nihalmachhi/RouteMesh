@@ -1,0 +1,107 @@
+{
+  "request_id": "fixture-001",
+  "rotation": 1,
+  "weights": {
+    "w_latency": 0.5,
+    "w_cpu": 0.3,
+    "w_error": 0.2,
+    "w_in_flight": 0.1
+  },
+  "backends": [
+    {
+      "backend_id": "backend-a",
+      "url": "http://backend-a:9001",
+      "healthy": true,
+      "circuit_state": "closed",
+      "in_flight": 2,
+      "ewma_latency_ms": 24.0,
+      "cpu_percent": 22.0,
+      "error_rate": 0.02
+    },
+    {
+      "backend_id": "backend-b",
+      "url": "http://backend-b:9002",
+      "healthy": true,
+      "circuit_state": "closed",
+      "in_flight": 7,
+      "ewma_latency_ms": 58.0,
+      "cpu_percent": 55.0,
+      "error_rate": 0.04
+    },
+    {
+      "backend_id": "backend-c",
+      "url": "http://backend-c:9003",
+      "healthy": true,
+      "circuit_state": "closed",
+      "in_flight": 4,
+      "ewma_latency_ms": 35.0,
+      "cpu_percent": 34.0,
+      "error_rate": 0.03
+    }
+  ],
+  "decisions": {
+    "round_robin": {
+      "chosen_backend_id": "backend-b",
+      "reason": "next healthy backend in rotation",
+      "candidates": [
+        {
+          "backend_id": "backend-a",
+          "score": 0.0,
+          "in_flight": 2
+        },
+        {
+          "backend_id": "backend-b",
+          "score": 1.0,
+          "in_flight": 7
+        },
+        {
+          "backend_id": "backend-c",
+          "score": 2.0,
+          "in_flight": 4
+        }
+      ]
+    },
+    "least_connections": {
+      "chosen_backend_id": "backend-a",
+      "reason": "fewest in-flight requests (2)",
+      "candidates": [
+        {
+          "backend_id": "backend-a",
+          "score": 2.0,
+          "in_flight": 2
+        },
+        {
+          "backend_id": "backend-c",
+          "score": 4.0,
+          "in_flight": 4
+        },
+        {
+          "backend_id": "backend-b",
+          "score": 7.0,
+          "in_flight": 7
+        }
+      ]
+    },
+    "latency_aware": {
+      "chosen_backend_id": "backend-a",
+      "reason": "lowest weighted score 0.000; in-flight penalty mitigates herding",
+      "candidates": [
+        {
+          "backend_id": "backend-a",
+          "score": 0.0,
+          "in_flight": 2
+        },
+        {
+          "backend_id": "backend-b",
+          "score": 1.1,
+          "in_flight": 7
+        },
+        {
+          "backend_id": "backend-c",
+          "score": 0.410855615,
+          "in_flight": 4
+        }
+      ]
+    }
+  }
+}

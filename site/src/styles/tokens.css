@@ -1,0 +1,16 @@
+:root {
+  --bg: #0c0c0d;
+  --p: #131315;
+  --p2: #19191c;
+  --ln: #242428;
+  --fg: #ececee;
+  --mu: #8c8c95;
+  --ok: #4ade9a;
+  --bad: #ff7a45;
+  --wh: #f4f4f5;
+  --accent: #38bdf8;
+  --fd: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --fb: "Instrument Sans", system-ui, -apple-system, sans-serif;
+  --fm: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
