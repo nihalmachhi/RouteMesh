@@ -1,9 +1,11 @@
 """HTTPX forwarding adapter and hop-by-hop header filtering."""
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 import httpx
 from fastapi import Request, Response
+from fastapi.responses import StreamingResponse
+from starlette.background import BackgroundTask
 
 HOP_BY_HOP_HEADERS = {
     "connection",
@@ -25,6 +27,20 @@ def filtered_headers(headers: Mapping[str, str]) -> dict[str, str]:
     }
     excluded = HOP_BY_HOP_HEADERS | connection_tokens
     return {key: value for key, value in headers.items() if key.lower() not in excluded}
+
+
+def filtered_raw_headers(headers: Sequence[tuple[bytes, bytes]]) -> list[tuple[bytes, bytes]]:
+    """Filter hop-by-hop fields while preserving valid repeated header fields."""
+    decoded = [(key.lower(), value) for key, value in headers]
+    connection_tokens = {
+        token.strip().lower().encode("ascii")
+        for key, value in decoded
+        if key == b"connection"
+        for token in value.decode("latin-1").split(",")
+        if token.strip()
+    }
+    excluded = {name.encode("ascii") for name in HOP_BY_HOP_HEADERS} | connection_tokens
+    return [(key.lower(), value) for key, value in headers if key.lower() not in excluded]
 
 
 class HttpForwarder:
@@ -54,7 +70,7 @@ class HttpForwarder:
         previous = request.headers.get("x-forwarded-for")
         headers["X-Forwarded-For"] = f"{previous}, {client_host}" if previous else client_host
         target = f"{backend_url}/{path.lstrip('/')}"
-        upstream = await self._client.request(
+        upstream_request = self._client.build_request(
             request.method,
             target,
             params=list(request.query_params.multi_items()),
@@ -62,9 +78,11 @@ class HttpForwarder:
             content=body,
             timeout=self._timeout,
         )
-        response_headers = filtered_headers(upstream.headers)
-        return Response(
-            content=upstream.content,
+        upstream = await self._client.send(upstream_request, stream=True)
+        response = StreamingResponse(
+            upstream.aiter_raw(),
             status_code=upstream.status_code,
-            headers=response_headers,
+            background=BackgroundTask(upstream.aclose),
         )
+        response.raw_headers = filtered_raw_headers(upstream.headers.raw)
+        return response

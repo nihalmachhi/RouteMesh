@@ -1,5 +1,6 @@
 """Catch-all application request forwarding route."""
 
+import re
 from uuid import uuid4
 
 from fastapi import APIRouter, Request
@@ -15,7 +16,9 @@ router = APIRouter()
 def get_request_id(request: Request) -> str:
     """Reuse a bounded caller request ID or generate a UUID."""
     supplied = request.headers.get("x-request-id", "").strip()
-    return supplied[:128] if supplied else str(uuid4())
+    if supplied and len(supplied) <= 128 and re.fullmatch(r"[A-Za-z0-9._:-]+", supplied):
+        return supplied
+    return str(uuid4())
 
 
 async def proxy_request(request: Request, path: str = "") -> Response:

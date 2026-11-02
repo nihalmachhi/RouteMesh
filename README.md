@@ -22,11 +22,11 @@ The demo compares round-robin, least-connections, and latency-aware policies usi
 
 Requirements: Docker Desktop with its engine running.
 
-1. Compose defaults work without a local environment file. You can use a local `.env` for overrides; it is ignored by Git. To protect admin controls, set `ROUTEMESH_ADMIN_TOKEN` in that file before starting the stack.
+1. Copy `.env.example` to `.env` and replace the placeholder with a long random admin token. `.env` is ignored by Git. The admin API fails closed until this token is configured.
 2. Start the demo: `docker compose up --build`.
-3. Open the dashboard at http://localhost:3000; proxy API docs are at http://localhost:8000/docs.
+3. Open the proxy API docs at http://localhost:8000/docs. The interactive project site is deployed separately from `site/` to GitHub Pages.
 
-The stack starts one proxy, three controllable FastAPI backends, Prometheus, and the dashboard. Stop with `docker compose down`. No benchmark numbers are checked in as if measured; use `make bench` to create a local run.
+The stack starts one proxy, three controllable FastAPI backends, and Prometheus. Stop with `docker compose down`. No benchmark numbers are checked in as if measured; use `make bench` to create a local run.
 
 ## Portfolio site deployment
 
@@ -60,7 +60,7 @@ flowchart LR
 - `src/routemesh/metrics`: Prometheus instruments, EWMA, rolling windows, decisions, SSE fanout.
 - `src/routemesh/test_backends`: demo-only controllable backends.
 - `src/routemesh/benchmarks`: Locust workload and report tooling.
-- `dashboard`: strict TypeScript React operations UI, bundled with Vite and served as static assets.
+- `site`: TypeScript React project site and routing simulator, deployed separately on GitHub Pages.
 - `tests`: deterministic unit tests and forwarding integration tests.
 - `configs`: routing and Prometheus settings.
 - `docs`: architecture, trade-offs, and benchmark methodology.
@@ -73,7 +73,7 @@ Use the dashboard to switch policy or make one backend slow, failing, or unavail
 1..50 | ForEach-Object { Invoke-WebRequest -Uri http://localhost:8000/demo -Method GET }
 ```
 
-The decision feed shows the chosen backend and reason. Metrics are at http://localhost:8000/metrics and Prometheus at http://localhost:9090.
+The admin decision feed shows the chosen backend and reason. Set `ROUTEMESH_ADMIN_TOKEN` in your local `.env` and send it as `X-RouteMesh-Admin-Token` to access `/admin/*`. Metrics are at http://localhost:8000/metrics and Prometheus at http://localhost:9090.
 
 ## Development
 
@@ -85,7 +85,7 @@ The decision feed shows the chosen backend and reason. Metrics are at http://loc
 - `make check`: lint, type check, and tests.
 - `make bench`: run identical 60-second Locust samples for each policy and create raw CSV, JSON, and a p95 chart in `output/benchmarks`.
 
-Configuration is validated from `configs/routemesh.yaml`; `ROUTEMESH_CONFIG_PATH` selects another file. Environment variables use the `ROUTEMESH_` prefix. Configure `ROUTEMESH_ADMIN_TOKEN` outside local demo use to protect policy and backend behavior changes.
+Configuration is validated from `configs/routemesh.yaml`; `ROUTEMESH_CONFIG_PATH` selects another file. Environment variables use the `ROUTEMESH_` prefix. Configure `ROUTEMESH_ADMIN_TOKEN` before using any `/admin/*` endpoint. Admin reads and mutations both fail closed when no token is configured. Send it using the `X-RouteMesh-Admin-Token` header.
 
 ## Reliability and limits
 

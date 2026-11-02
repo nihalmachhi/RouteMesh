@@ -13,7 +13,11 @@ async def test_forwarder_preserves_query_body_and_request_id():
         seen["url"] = str(request.url)
         seen["body"] = await request.aread()
         seen["request_id"] = request.headers["x-request-id"]
-        return httpx.Response(201, content=b"created", headers={"X-Upstream": "demo"})
+        return httpx.Response(
+            201,
+            stream=httpx.ByteStream(b"created"),
+            headers=[("X-Upstream", "demo"), ("Set-Cookie", "a=1"), ("Set-Cookie", "b=2")],
+        )
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
     scope = {
@@ -44,8 +48,13 @@ async def test_forwarder_preserves_query_body_and_request_id():
         request, "http://backend", "orders", "request-1"
     )
     assert response.status_code == 201
+    body = b"".join([chunk async for chunk in response.body_iterator])
+    if response.background:
+        await response.background()
+    assert body == b"created"
     assert seen["url"] == "http://backend/orders?tag=a&tag=b"
     assert seen["body"] == b"payload"
     assert seen["request_id"] == "request-1"
     assert response.headers["x-upstream"] == "demo"
+    assert response.headers.getlist("set-cookie") == ["a=1", "b=2"]
     await client.aclose()

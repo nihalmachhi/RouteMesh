@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-import math
 
 import httpx
 from fastapi import Request, Response
@@ -30,19 +29,24 @@ class RetryBudget:
 
     def __init__(self, ratio: float) -> None:
         self._ratio = max(0.0, ratio)
-        self._earned = 0.0
-        self._spent = 0
+        # Bound burst capacity so a long quiet period cannot bank unlimited retries.
+        self._capacity = max(1.0, self._ratio * 100)
+        self._tokens = 0.0
 
     def start_request(self) -> None:
-        """Earn a fractional retry token for each original request."""
-        self._earned += self._ratio
+        """Earn a fractional retry token, capped to a finite burst allowance."""
+        self._tokens = min(self._capacity, self._tokens + self._ratio)
 
     def consume(self) -> bool:
-        """Spend a retry token if the global budget permits it."""
-        if self._spent >= math.floor(self._earned):
+        """Spend one retry token if the global budget permits it."""
+        if self._tokens < 1.0:
             return False
-        self._spent += 1
+        self._tokens -= 1.0
         return True
+
+    def reset(self) -> None:
+        """Discard accumulated retry allowance between controlled runs."""
+        self._tokens = 0.0
 
 
 class PolicyState:
@@ -140,6 +144,7 @@ class ProxyRouter:
             for backend_id in self.breakers
         }
         self.request_counts = {backend_id: 0 for backend_id in self.breakers}
+        self.retry_budget.reset()
         await self.policy.reset()
         self.decisions.clear()
         for metric in (

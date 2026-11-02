@@ -13,8 +13,6 @@ from routemesh.common.settings import Settings
 from routemesh.metrics.decision_log import DecisionLog
 from routemesh.policies.registry import get_policy
 
-router = APIRouter()
-
 
 class PolicyUpdate(BaseModel):
     """Validate an active routing policy change."""
@@ -35,12 +33,15 @@ class BehaviorUpdate(BaseModel):
 async def require_admin(
     request: Request, x_routemesh_admin_token: str | None = Header(default=None)
 ) -> None:
-    """Protect state-changing endpoints when an admin token is configured."""
+    """Require a configured admin token for every operations endpoint."""
     settings: Settings = request.app.state.settings
-    if settings.admin_token and not secrets.compare_digest(
-        settings.admin_token, x_routemesh_admin_token or ""
-    ):
+    if not settings.admin_token:
+        raise HTTPException(status_code=503, detail="admin token is not configured")
+    if not secrets.compare_digest(settings.admin_token, x_routemesh_admin_token or ""):
         raise HTTPException(status_code=401, detail="invalid admin token")
+
+
+router = APIRouter(dependencies=[Depends(require_admin)])
 
 
 @router.get("/admin/backends")
@@ -72,7 +73,7 @@ async def get_active_policy(request: Request) -> dict[str, str]:
     return {"policy": name}
 
 
-@router.put("/admin/policy", dependencies=[Depends(require_admin)])
+@router.put("/admin/policy")
 async def set_active_policy(body: PolicyUpdate, request: Request) -> dict[str, str]:
     """Switch policy at runtime after validating the registry name."""
     get_policy(body.policy)
@@ -80,7 +81,7 @@ async def set_active_policy(body: PolicyUpdate, request: Request) -> dict[str, s
     return {"policy": body.policy}
 
 
-@router.post("/admin/reset", dependencies=[Depends(require_admin)])
+@router.post("/admin/reset")
 async def reset_observations(request: Request) -> dict[str, str]:
     """Reset local counters and breaker history for an isolated benchmark run."""
     await request.app.state.router.reset_observations()
@@ -112,10 +113,7 @@ async def event_stream(request: Request) -> StreamingResponse:
     return StreamingResponse(events(), media_type="text/event-stream")
 
 
-@router.post(
-    "/admin/backends/{backend_id}/behavior",
-    dependencies=[Depends(require_admin)],
-)
+@router.post("/admin/backends/{backend_id}/behavior")
 async def set_backend_behavior(
     backend_id: str, body: BehaviorUpdate, request: Request
 ) -> dict[str, object]:
