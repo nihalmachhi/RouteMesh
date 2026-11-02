@@ -28,6 +28,10 @@ Requirements: Docker Desktop with its engine running.
 
 The stack starts one proxy, three controllable FastAPI backends, Prometheus, and the dashboard. Stop with `docker compose down`. No benchmark numbers are checked in as if measured; use `make bench` to create a local run.
 
+## Portfolio site deployment
+
+The project site in `site/` is built and deployed to GitHub Pages by `.github/workflows/site.yml` on pushes to `main`. To let the workflow enable Pages automatically on a repository where Pages has not been configured yet, add a repository Actions secret named `PAGES_ENABLEMENT_TOKEN`. Use a repository-scoped fine-grained token with Pages write and Administration write permissions. The workflow uses it only in `actions/configure-pages`; the Pages artifact deployment uses GitHub Actions' OIDC and `GITHUB_TOKEN` permissions.
+
 ## Request flow
 
 ```mermaid
