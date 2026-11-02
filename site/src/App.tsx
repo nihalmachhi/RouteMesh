@@ -23,7 +23,7 @@ const glyphs: Record<string, string> = {
   arrow: "M5 12h14m-6-6 6 6-6 6",
 };
 function Icon({ name }: { name: string }) {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d={glyphs[name] ?? glyphs.arrow}/></svg>;
+  return <svg className="icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d={glyphs[name] ?? glyphs.arrow}/></svg>;
 }
 function Brand() {
   return <a className="brand" href="#top"><img className="brand-icon" src={import.meta.env.BASE_URL+"readme-icon.png"} alt="" width="22" height="22"/>RouteMesh</a>;

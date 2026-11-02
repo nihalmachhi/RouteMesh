@@ -757,6 +757,17 @@ details p {
 .m {
   color: #6b6b74;
 }
+.icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: -0.12em;
+}
 .ico {
   display: inline-flex;
   align-items: center;
@@ -788,6 +799,7 @@ details p {
 }
 .ib svg {
   width: 22px;
+  height: 22px;
   fill: none;
   stroke: #fff;
   stroke-width: 2.2;
