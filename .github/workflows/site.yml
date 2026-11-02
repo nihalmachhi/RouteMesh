@@ -69,7 +69,7 @@ jobs:
         uses: actions/configure-pages@v5
         with:
           enablement: true
-          token: ${{ secrets.PAGES_ENABLEMENT_TOKEN || github.token }}
+          token: ${{ secrets.PAGES_ENABLEMENT_TOKEN }}
 
       - name: Build site
         working-directory: site
