@@ -5,41 +5,102 @@ services:
       ROUTEMESH_CONFIG_PATH: /app/configs/routemesh.yaml
       ROUTEMESH_LOG_LEVEL: INFO
       ROUTEMESH_ADMIN_TOKEN: ${ROUTEMESH_ADMIN_TOKEN:-}
+      ROUTEMESH_ADMIN_PORT: 9000
+      ROUTEMESH_ADMIN_HOST: 0.0.0.0
     volumes:
       - ./configs/routemesh.yaml:/app/configs/routemesh.yaml:ro
     ports:
       - "${ROUTEMESH_API_PORT:-8000}:8000"
+      - "127.0.0.1:${ROUTEMESH_ADMIN_HOST_PORT:-9000}:9000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.50"
+          memory: 768M
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/healthz', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
     depends_on:
       backend-a:
-        condition: service_started
+        condition: service_healthy
       backend-b:
-        condition: service_started
+        condition: service_healthy
       backend-c:
-        condition: service_started
+        condition: service_healthy
   backend-a:
-    build: .
+    build:
+      context: .
+      target: demo-backend
     command: ["uvicorn", "routemesh.demo_backends.app:app", "--host", "0.0.0.0", "--port", "9001"]
     environment:
       ROUTEMESH_BACKEND_ID: backend-a
     expose: ["9001"]
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9001/health', timeout=2)"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
   backend-b:
-    build: .
+    build:
+      context: .
+      target: demo-backend
     command: ["uvicorn", "routemesh.demo_backends.app:app", "--host", "0.0.0.0", "--port", "9002"]
     environment:
       ROUTEMESH_BACKEND_ID: backend-b
     expose: ["9002"]
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9002/health', timeout=2)"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
   backend-c:
-    build: .
+    build:
+      context: .
+      target: demo-backend
     command: ["uvicorn", "routemesh.demo_backends.app:app", "--host", "0.0.0.0", "--port", "9003"]
     environment:
       ROUTEMESH_BACKEND_ID: backend-c
     expose: ["9003"]
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9003/health', timeout=2)"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
   prometheus:
     image: prom/prometheus:v2.55.1
-    command: ["--config.file=/etc/prometheus/prometheus.yml"]
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--config.expand-env"]
+    environment:
+      ROUTEMESH_ADMIN_TOKEN: ${ROUTEMESH_ADMIN_TOKEN:-}
     volumes:
       - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     depends_on:
-      - proxy
+      proxy:
+        condition: service_healthy

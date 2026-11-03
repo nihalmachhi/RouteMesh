@@ -1,6 +1,7 @@
 """HTTPX forwarding adapter and hop-by-hop header filtering."""
 
-from collections.abc import Mapping, Sequence
+import asyncio
+from collections.abc import AsyncIterator, Mapping, Sequence
 
 import httpx
 from fastapi import Request, Response
@@ -18,6 +19,10 @@ HOP_BY_HOP_HEADERS = {
     "transfer-encoding",
     "upgrade",
 }
+
+
+class RequestBodyTooLarge(Exception):
+    """Signal that a streamed request exceeded its configured byte limit."""
 
 
 def filtered_headers(headers: Mapping[str, str]) -> dict[str, str]:
@@ -52,35 +57,89 @@ class HttpForwarder:
         connect_timeout: float,
         read_timeout: float,
         max_body_bytes: int,
+        total_timeout: float = 30.0,
+        trusted_proxy_hosts: list[str] | None = None,
     ) -> None:
         self._client = client
         self._timeout = httpx.Timeout(read_timeout, connect=connect_timeout)
         self._max_body_bytes = max_body_bytes
+        self._total_timeout = total_timeout
+        self._trusted_proxy_hosts = set(trusted_proxy_hosts or [])
 
     async def send(
         self, request: Request, backend_url: str, path: str, request_id: str
     ) -> Response:
         """Forward one bounded request and return a sanitized backend response."""
-        body = await request.body()
-        if len(body) > self._max_body_bytes:
+        if request.headers.get("upgrade", "").lower() == "websocket":
+            return Response("WebSocket proxying is not supported", status_code=501)
+        content_length = request.headers.get("content-length")
+        if content_length is not None and int(content_length) > self._max_body_bytes:
             return Response("request body too large", status_code=413)
-        headers = filtered_headers(request.headers)
-        headers["X-Request-ID"] = request_id
+        headers = [
+            (key.decode("latin-1"), value.decode("latin-1"))
+            for key, value in filtered_raw_headers(request.headers.raw)
+            if key.lower()
+            not in {
+                b"x-request-id",
+                b"x-forwarded-for",
+                b"x-forwarded-proto",
+                b"x-forwarded-host",
+            }
+        ]
+        headers.append(("X-Request-ID", request_id))
         client_host = request.client.host if request.client else "unknown"
-        previous = request.headers.get("x-forwarded-for")
-        headers["X-Forwarded-For"] = f"{previous}, {client_host}" if previous else client_host
+        prior_forwarded_for = request.headers.get("x-forwarded-for")
+        forwarded_for = (
+            f"{prior_forwarded_for}, {client_host}"
+            if client_host in self._trusted_proxy_hosts and prior_forwarded_for
+            else client_host
+        )
+        headers.extend(
+            [
+                ("X-Forwarded-For", forwarded_for),
+                ("X-Forwarded-Proto", request.url.scheme),
+                ("X-Forwarded-Host", request.headers.get("host", "")),
+            ]
+        )
         target = f"{backend_url}/{path.lstrip('/')}"
+
+        async def body_stream() -> AsyncIterator[bytes]:
+            total = 0
+            async for chunk in request.stream():
+                total += len(chunk)
+                if total > self._max_body_bytes:
+                    raise RequestBodyTooLarge
+                if chunk:
+                    yield chunk
+
+        body_content: AsyncIterator[bytes] | bytes = body_stream()
+        if request.method in {"GET", "HEAD", "OPTIONS"} and content_length in {None, "0"}:
+            body_content = b""
         upstream_request = self._client.build_request(
             request.method,
             target,
             params=list(request.query_params.multi_items()),
             headers=headers,
-            content=body,
+            content=body_content,
             timeout=self._timeout,
         )
-        upstream = await self._client.send(upstream_request, stream=True)
+        try:
+            async with asyncio.timeout(self._total_timeout):
+                upstream = await self._client.send(upstream_request, stream=True)
+        except RequestBodyTooLarge:
+            return Response("request body too large", status_code=413)
+        except TimeoutError as exc:
+            raise httpx.TimeoutException("total upstream request deadline exceeded") from exc
+
+        deadline = asyncio.get_running_loop().time() + self._total_timeout
+
+        async def response_body() -> AsyncIterator[bytes]:
+            async with asyncio.timeout_at(deadline):
+                async for chunk in upstream.aiter_raw():
+                    yield chunk
+
         response = StreamingResponse(
-            upstream.aiter_raw(),
+            response_body(),
             status_code=upstream.status_code,
             background=BackgroundTask(upstream.aclose),
         )

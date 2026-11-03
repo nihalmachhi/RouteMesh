@@ -9,6 +9,8 @@ from typing import Any
 
 from routemesh.discovery.models import BackendSnapshot
 from routemesh.policies.registry import get_policy
+from routemesh.sim.engine import simulate
+from routemesh.sim.scenarios import scenario_backends
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -54,7 +56,7 @@ def export() -> dict[str, Any]:
     candidates = [BackendSnapshot(**row) for row in BACKEND_INPUTS]
     at = datetime(2026, 1, 1, tzinfo=UTC)
     decisions: dict[str, Any] = {}
-    for name in ("round_robin", "least_connections", "latency_aware"):
+    for name in ("round_robin", "least_connections", "latency_aware", "p2c_peak_ewma"):
         decision = get_policy(name).select(
             candidates,
             request_id=REQUEST_ID,
@@ -89,6 +91,23 @@ def main() -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(export(), indent=2) + "\n", encoding="utf-8")
     print(f"Wrote {target.relative_to(ROOT)}")
+    simulation_path = ROOT / "site/src/features/simulator/__fixtures__/simulation-standard-001.json"
+    simulation_path.write_text(
+        json.dumps(
+            {
+                "policy": "p2c_peak_ewma",
+                "backends": scenario_backends("standard"),
+                "request_count": 60,
+                "arrival_rate": 30,
+                "seed": 912,
+                "result": simulate("p2c_peak_ewma", scenario_backends("standard"), seed=912),
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    print(f"Wrote {simulation_path.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

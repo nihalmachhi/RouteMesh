@@ -6,10 +6,12 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import httpx
+import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse, Response
+from fastapi.responses import JSONResponse, Response
 
+from routemesh.admin.app import create_admin_app
 from routemesh.core.errors import ConfigurationError
 from routemesh.core.logging import configure_logging
 from routemesh.core.settings import Settings, get_settings
@@ -22,7 +24,6 @@ from routemesh.metrics.prometheus import ProxyMetrics
 from routemesh.proxy.backpressure import BackpressureLimiter, Overloaded
 from routemesh.proxy.forwarder import HttpForwarder
 from routemesh.proxy.router import ProxyRouter
-from routemesh.proxy.routes_admin import router as admin_router
 from routemesh.proxy.routes_proxy import proxy_request
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 float(config.timeouts["connect_s"]),
                 float(config.timeouts["read_s"]),
                 active_settings.max_body_bytes,
+                float(config.timeouts.get("total_s", config.timeouts["read_s"])),
+                active_settings.trusted_proxy_hosts,
             )
             app.state.router = ProxyRouter(
                 registry,
@@ -78,31 +81,52 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
             app.state.health_checker = checker
             task = asyncio.create_task(checker.run(), name="backend-health-checker")
+            admin_app = create_admin_app(active_settings, metrics)
+            for state_name in (
+                "http_client",
+                "router",
+                "registry",
+                "events",
+                "decisions",
+                "config",
+                "health_checker",
+            ):
+                setattr(admin_app.state, state_name, getattr(app.state, state_name))
+            admin_server = uvicorn.Server(
+                uvicorn.Config(
+                    admin_app,
+                    host=active_settings.admin_host,
+                    port=active_settings.admin_port,
+                    log_config=None,
+                    lifespan="off",
+                )
+            )
+            admin_task = asyncio.create_task(admin_server.serve(), name="routemesh-admin-listener")
+            while not admin_server.started:
+                if admin_task.done():
+                    await admin_task
+                await asyncio.sleep(0.01)
+            app.state.admin_server = admin_server
             yield
+            admin_server.should_exit = True
+            await admin_task
             await checker.stop()
             await task
 
-    app = FastAPI(title="RouteMesh", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(
+        title="RouteMesh",
+        version="0.2.0",
+        lifespan=lifespan,
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=active_settings.dashboard_origins,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
         allow_headers=["*"],
     )
-    app.include_router(admin_router)
-
-    @app.get("/healthz", tags=["health"])
-    async def healthz() -> dict[str, str]:
-        """Report process liveness without coupling it to backend health."""
-        return {"status": "ok"}
-
-    @app.get("/metrics", include_in_schema=False)
-    async def metrics_endpoint() -> PlainTextResponse:
-        """Expose low-cardinality Prometheus metrics."""
-        return PlainTextResponse(
-            metrics.content().decode("utf-8"),
-            media_type="text/plain; version=0.0.4; charset=utf-8",
-        )
 
     @app.exception_handler(Overloaded)
     async def overloaded_handler(request: Request, exc: Overloaded) -> JSONResponse:

@@ -12,7 +12,11 @@ class BackendRegistry:
 
     def __init__(self, backends: list[BackendConfig]) -> None:
         self._items = {
-            backend.backend_id: BackendSnapshot(backend.backend_id, backend.url)
+            backend.backend_id: BackendSnapshot(
+                backend.backend_id,
+                backend.url,
+                extensions={"weight": float(backend.weight)},
+            )
             for backend in backends
         }
         self._lock = asyncio.Lock()
@@ -30,7 +34,7 @@ class BackendRegistry:
         checked_at: datetime,
         failure_threshold: int = 1,
         recovery_successes: int = 1,
-        in_flight: int | None = None,
+        backend_reported_in_flight: int | None = None,
     ) -> None:
         """Update health state and consecutive check counters."""
         async with self._lock:
@@ -46,8 +50,8 @@ class BackendRegistry:
                 if backend.consecutive_health_failures >= failure_threshold:
                     backend.healthy = False
             backend.cpu_percent = min(100.0, max(0.0, cpu_percent))
-            if in_flight is not None:
-                backend.in_flight = max(0, in_flight)
+            if backend_reported_in_flight is not None:
+                backend.backend_reported_in_flight = max(0, backend_reported_in_flight)
             backend.last_check_at = checked_at
 
     async def adjust_in_flight(self, backend_id: str, delta: int) -> int:
@@ -63,6 +67,7 @@ class BackendRegistry:
         *,
         in_flight: int | None = None,
         ewma_latency_ms: float | None = None,
+        latency_updated_at: datetime | None = None,
         error_rate: float | None = None,
         circuit_state: str | None = None,
     ) -> None:
@@ -73,6 +78,8 @@ class BackendRegistry:
                 backend.in_flight = max(0, in_flight)
             if ewma_latency_ms is not None:
                 backend.ewma_latency_ms = max(0.0, ewma_latency_ms)
+            if latency_updated_at is not None:
+                backend.latency_updated_at = latency_updated_at
             if error_rate is not None:
                 backend.error_rate = min(1.0, max(0.0, error_rate))
             if circuit_state is not None:

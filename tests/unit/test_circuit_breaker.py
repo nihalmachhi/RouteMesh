@@ -42,3 +42,15 @@ def test_half_open_failure_reopens_breaker():
     assert breaker.allow_request()
     breaker.record(False)
     assert breaker.state == "open"
+
+
+def test_abandoned_half_open_probe_releases_its_reservation():
+    clock = FakeClock()
+    breaker = CircuitBreaker(consecutive_limit=1, open_seconds=1, clock=clock)
+    breaker.record(False)
+    clock.value = 1
+    assert breaker.allow_request()
+    assert breaker.half_open_in_flight == 1
+    breaker.release_probe()
+    assert breaker.half_open_in_flight == 0
+    assert breaker.allow_request()

@@ -52,14 +52,14 @@ class HealthChecker:
         """Apply one active health observation without failing other checks."""
         healthy = False
         cpu = 0.0
-        in_flight = None
+        backend_reported_in_flight = None
         try:
             response = await self.client.get(f"{url}/health")
             response.raise_for_status()
             payload = response.json()
             healthy = payload.get("status") == "ok"
             cpu = float(payload.get("cpu_percent", 0.0))
-            in_flight = int(payload.get("in_flight", 0))
+            backend_reported_in_flight = int(payload.get("in_flight", 0))
         except (httpx.HTTPError, ValueError, TypeError) as exc:
             logger.warning(
                 "backend health check failed",
@@ -72,5 +72,5 @@ class HealthChecker:
             self.clock.utc_now(),
             self.failure_threshold,
             self.recovery_successes,
-            in_flight,
+            backend_reported_in_flight,
         )

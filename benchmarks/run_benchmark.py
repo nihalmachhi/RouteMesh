@@ -31,7 +31,7 @@ def _set_policy(client: httpx.Client, policy: str) -> None:
 
 def _run_policy(output: Path, policy: str) -> dict[str, int | float]:
     """Run the fixed Locust profile and return its real aggregate CSV stats."""
-    subprocess.run(
+    subprocess.run(  # noqa: S603 - fixed local command arguments, no shell or user input
         [
             sys.executable,
             "-m",

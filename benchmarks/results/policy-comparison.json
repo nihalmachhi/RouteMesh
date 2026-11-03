@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "source": "seeded discrete-event simulation",
+  "scenario_count": 3,
+  "seed_count": 20,
+  "request_count_per_run": 120,
+  "comparisons": {
+    "standard": {
+      "round_robin": {
+        "p99_ms_mean": 74.71634117719663,
+        "p99_ms_ci95": [
+          74.388521639175,
+          75.04416071521825
+        ],
+        "error_rate_mean": 0.020416666666666666,
+        "seed_count": 20
+      },
+      "least_connections": {
+        "p99_ms_mean": 71.37978294680632,
+        "p99_ms_ci95": [
+          70.26381199423493,
+          72.4957538993777
+        ],
+        "error_rate_mean": 0.012916666666666667,
+        "seed_count": 20
+      },
+      "latency_aware": {
+        "p99_ms_mean": 29.41336295799154,
+        "p99_ms_ci95": [
+          29.372480257503625,
+          29.454245658479458
+        ],
+        "error_rate_mean": 0.010833333333333334,
+        "seed_count": 20
+      },
+      "p2c_peak_ewma": {
+        "p99_ms_mean": 43.46382676958366,
+        "p99_ms_ci95": [
+          43.31149702140233,
+          43.61615651776499
+        ],
+        "error_rate_mean": 0.01375,
+        "seed_count": 20
+      }
+    },
+    "overloaded": {
+      "round_robin": {
+        "p99_ms_mean": 248.27875961893915,
+        "p99_ms_ci95": [
+          247.28807266835528,
+          249.269446569523
+        ],
+        "error_rate_mean": 0.020416666666666666,
+        "seed_count": 20
+      },
+      "least_connections": {
+        "p99_ms_mean": 245.72089680806815,
+        "p99_ms_ci95": [
+          243.77068959675876,
+          247.67110401937754
+        ],
+        "error_rate_mean": 0.024583333333333332,
+        "seed_count": 20
+      },
+      "latency_aware": {
+        "p99_ms_mean": 43.880567822865736,
+        "p99_ms_ci95": [
+          43.819576629369635,
+          43.941559016361836
+        ],
+        "error_rate_mean": 0.022083333333333333,
+        "seed_count": 20
+      },
+      "p2c_peak_ewma": {
+        "p99_ms_mean": 74.57354576373102,
+        "p99_ms_ci95": [
+          74.07581141531969,
+          75.07128011214235
+        ],
+        "error_rate_mean": 0.025833333333333333,
+        "seed_count": 20
+      }
+    },
+    "flapping": {
+      "round_robin": {
+        "p99_ms_mean": 154.5272239199208,
+        "p99_ms_ci95": [
+          153.8678330188933,
+          155.1866148209483
+        ],
+        "error_rate_mean": 0.115,
+        "seed_count": 20
+      },
+      "least_connections": {
+        "p99_ms_mean": 145.78614676689114,
+        "p99_ms_ci95": [
+          143.35293745453265,
+          148.21935607924962
+        ],
+        "error_rate_mean": 0.03666666666666667,
+        "seed_count": 20
+      },
+      "latency_aware": {
+        "p99_ms_mean": 29.41336295799154,
+        "p99_ms_ci95": [
+          29.372480257503625,
+          29.454245658479458
+        ],
+        "error_rate_mean": 0.010833333333333334,
+        "seed_count": 20
+      },
+      "p2c_peak_ewma": {
+        "p99_ms_mean": 43.46382676958366,
+        "p99_ms_ci95": [
+          43.31149702140233,
+          43.61615651776499
+        ],
+        "error_rate_mean": 0.01375,
+        "seed_count": 20
+      }
+    }
+  },
+  "tuning": {
+    "scenario": "overloaded",
+    "seed_count": 10,
+    "candidate_count": 20,
+    "default": {
+      "weights": {
+        "w_latency": 0.5,
+        "w_cpu": 0.3,
+        "w_error": 0.2,
+        "w_in_flight": 0.1
+      },
+      "p99_ms_mean": 43.82512781321162
+    },
+    "tuned": {
+      "weights": {
+        "w_latency": 0.2057804609881714,
+        "w_cpu": 0.6477855746827403,
+        "w_error": 0.14643396432908828,
+        "w_in_flight": 0.15632223514840007
+      },
+      "p99_ms_mean": 43.82512781321162,
+      "p99_ms_ci95": [
+        43.71192976456115,
+        43.9383258618621
+      ]
+    },
+    "limitations": "Seeded search on a synthetic queue model; not production tuning evidence."
+  },
+  "retry_amplification": {
+    "maximum_attempts_per_downstream_call": 12,
+    "inventory_failure_blast_radius": [
+      "catalog",
+      "client",
+      "gateway",
+      "inventory"
+    ],
+    "critical_path_ms": 65.0
+  },
+  "bandit_evaluation": {
+    "strategy": "Thompson sampling",
+    "pulls": {
+      "round_robin": 16,
+      "least_connections": 39,
+      "latency_aware": 68,
+      "p2c_peak_ewma": 77
+    },
+    "observed_pseudo_regret": 14.117647058823529,
+    "rounds": 200,
+    "limitations": "Fixed synthetic reward probabilities, not live traffic feedback."
+  },
+  "nlp_evaluation": {
+    "input_lines": 4,
+    "template_count": 1,
+    "clustered_repeat_count": 3,
+    "normalized_example_path": "/orders/{id}/items/{id}",
+    "decision_narration": "p2c_peak_ewma selected backend-a: lower peak-EWMA/load score The decision compared 1 eligible candidate(s).",
+    "limitations": "Deterministic token rules; no semantic or free-form language model."
+  },
+  "limitations": "Synthetic queue model, not production performance or a live-proxy benchmark."
+}

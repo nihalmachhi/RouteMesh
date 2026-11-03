@@ -26,7 +26,7 @@ def create_backend_app(backend_id: str | None = None) -> FastAPI:
     """Build one backend process for local routing and failure experiments."""
     name: str = backend_id or os.getenv("ROUTEMESH_BACKEND_ID") or "backend-a"
     state = BehaviorState()
-    randomizer = random.Random(42)
+    randomizer = random.Random(42)  # noqa: S311 - deterministic fault simulation, not cryptography
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:

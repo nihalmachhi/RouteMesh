@@ -63,6 +63,11 @@ class CircuitBreaker:
         ):
             self._open()
 
+    def release_probe(self) -> None:
+        """Release a reserved half-open probe when no ordinary result can record it."""
+        if self.state == "half_open":
+            self.half_open_in_flight = max(0, self.half_open_in_flight - 1)
+
     def _refresh_state(self) -> None:
         """Make an expired open circuit available for bounded recovery probes."""
         if self.state == "open" and self.clock.monotonic() - self.opened_at >= self.open_seconds:

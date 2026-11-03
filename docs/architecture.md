@@ -1,29 +1,30 @@
 # RouteMesh architecture
 
-RouteMesh is a single-process, application-level HTTP reverse proxy intended as a learning and demonstration project. It reads backend definitions and routing settings from `configs/routemesh.yaml`, probes configured health endpoints, chooses an eligible backend, forwards requests, and records the selection reason.
+RouteMesh is a single-process HTTP reverse proxy. It reads static backend definitions from `configs/routemesh.yaml`, probes their health, selects a healthy target, streams the request and response, and records the decision. It cannot forward to a client-selected URL.
 
 ## Request lifecycle
 
-1. The FastAPI catch-all route creates or validates a bounded request ID and acquires an in-flight slot.
-2. The router excludes unhealthy backends and those whose circuit breaker is open. A half-open backend receives only the configured recovery probes.
-3. The active policy ranks the remaining backend snapshots. The decision contains the selected backend and an explanation that is added to the bounded decision log and event stream.
-4. The HTTPX forwarder strips hop-by-hop headers, applies the body-size limit, and sends the request to the selected backend.
-5. The router updates latency EWMA, rolling errors, breaker state, in-flight counts, and Prometheus metrics. Retry attempts are limited to safe methods or requests carrying an idempotency key, and consume a finite token budget.
+1. The proxy validates or creates a bounded request ID and applies global admission control.
+2. The router filters unhealthy, open-circuit, and temporarily ejected backends. A policy selects among the remaining snapshots.
+3. The decision and its reason are appended to a bounded decision log and an in-process event stream.
+4. The HTTPX forwarder streams request and response bytes, enforces body and total-time limits, and preserves duplicate response headers.
+5. The router updates latency EWMA, rolling errors, breaker and outlier state, metrics, and retry budget. When explicitly enabled, it can hedge a bodyless `GET` or `HEAD` after the configured delay; the duplicate consumes retry budget and is canceled when another attempt wins.
 
-## Boundaries
+## Operations plane
 
-Backend health, routing telemetry, breakers, and the SSE event stream are held in process memory. Run one proxy process for the demo. The configured token protects all admin endpoints, including read-only views. Admin requests fail closed when no token is configured.
+The data path listens on port 8000. The operations ASGI app runs on a separate listener with admin routes, metrics, and liveness. Reads and writes require `X-RouteMesh-Admin-Token`; without a configured token these endpoints return 503. Local execution defaults to `127.0.0.1`. Compose binds the operations listener to the private container network and publishes it to host loopback only (`127.0.0.1:9000`). Prometheus uses the same bearer token to scrape metrics.
 
-The proxy buffers request bodies up to `ROUTEMESH_MAX_BODY_BYTES`; streaming uploads, response streaming, TLS termination, HTTP/2, WebSockets, distributed state, and dynamic cloud discovery are not implemented. A routing score is an explicit heuristic, not a learned model. The benchmark scripts create local measurements; example values in the website are simulations and should not be presented as production results.
+Health state, route decisions, event streams, breakers, outlier windows, retry credits, and adaptive limits are process-local. Run one proxy process for the demo. WebSockets, TLS termination, dynamic discovery, and distributed consistency are not implemented.
 
 ## Repository map
 
-- `src/routemesh/proxy`: FastAPI app, routing/retries, request forwarding, backpressure, and admin API.
-- `src/routemesh/policies`: round-robin, least-connections, and latency-aware policies.
-- `src/routemesh/discovery`: YAML loading and in-memory backend registry.
-- `src/routemesh/health`: active health checks and circuit breaker.
-- `src/routemesh/metrics`: Prometheus metrics, EWMA, rolling windows, bounded decision log, and SSE.
-- `src/routemesh/demo_backends`: controllable demo backends.
-- `benchmarks`: Locust scenarios and report generation.
-- `site`: GitHub Pages project site and interactive routing simulator.
-- `tests`: unit and integration tests.
+- `src/routemesh/proxy`: proxy app, router, streaming forwarder, and global admission control.
+- `src/routemesh/admin`: separate operations app, authenticated reads and controls, and demo fault injection.
+- `src/routemesh/policies`: round-robin, least-connections, latency-aware, P2C, and weighted round-robin.
+- `src/routemesh/health`: active checks, circuit breaker, and rolling outlier ejection.
+- `src/routemesh/resilience`: adaptive per-backend concurrency and a bounded hedge primitive.
+- `src/routemesh/graph`: validated DAG analysis, retry amplification, blast radius, and path costs.
+- `src/routemesh/logmining` and `src/routemesh/explain`: deterministic templates, path labels, and decision narration.
+- `src/routemesh/sim`: seeded synthetic workloads, comparison reports, and offline weight search.
+- `site`: project site and TypeScript simulator checked against Python fixtures.
+- `benchmarks`: Locust workload for local proxy measurements.

@@ -1,11 +1,13 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "routemesh"
-version = "0.1.0"
+version = "0.2.0"
 description = "An observable health-aware application-level reverse proxy."
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12,<3.14"
 dependencies = [
   "fastapi>=0.115,<1",
@@ -18,7 +20,7 @@ dependencies = [
   "python-multipart>=0.0.12,<1",
 ]
 [project.optional-dependencies]
-dev = ["pytest>=8.3,<9", "pytest-asyncio>=0.24,<1", "respx>=0.21,<1", "ruff>=0.6,<1", "mypy>=1.11,<2", "pre-commit>=3.8,<5", "locust>=2.32,<3", "matplotlib>=3.9,<4", "coverage[toml]>=7.6,<8"]
+dev = ["pytest>=8.3,<9", "pytest-asyncio>=0.24,<1", "pytest-cov>=5,<8", "respx>=0.21,<1", "ruff>=0.6,<1", "mypy>=1.11,<2", "pre-commit>=3.8,<5", "locust>=2.32,<3", "matplotlib>=3.9,<4", "coverage[toml]>=7.6,<8"]
 [tool.setuptools.packages.find]
 where = ["src"]
 [tool.pytest.ini_options]
@@ -31,7 +33,9 @@ markers = ["integration: exercises a running proxy and test backends", "load: sm
 line-length = 100
 target-version = "py312"
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]
+select = ["E", "F", "I", "UP", "B", "SIM", "S"]
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S106"]
 [tool.mypy]
 python_version = "3.12"
 strict = true

@@ -10,6 +10,7 @@ class BackendConfig:
 
     backend_id: str
     url: str
+    weight: int = 1
 
 
 @dataclass(slots=True)
@@ -21,7 +22,9 @@ class BackendSnapshot:
     healthy: bool = False
     circuit_state: str = "closed"
     in_flight: int = 0
+    backend_reported_in_flight: int | None = None
     ewma_latency_ms: float = 0.0
+    latency_updated_at: datetime | None = None
     error_rate: float = 0.0
     cpu_percent: float = 0.0
     last_check_at: datetime | None = None

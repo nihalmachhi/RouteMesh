@@ -62,8 +62,9 @@ jobs:
 
       - name: Verify Python policy fixture is current
         run: |
+          python -m routemesh.sim.report
           python site/scripts/export_fixtures.py
-          git diff --exit-code -- site/src/features/simulator/__fixtures__/policy-decisions.json
+          git diff --exit-code -- benchmarks/results/policy-comparison.json site/src/data/results.generated.json site/src/features/simulator/__fixtures__/
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

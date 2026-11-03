@@ -1,7 +1,7 @@
 PYTHON ?= python
 PIP ?= $(PYTHON) -m pip
 
-.PHONY: install lint typecheck test check up down bench format
+.PHONY: install lint typecheck test check up down bench bench-sim reproduce site-fixtures format
 install:
 	$(PIP) install -e ".[dev]"
 lint:
@@ -19,3 +19,10 @@ down:
 	docker compose down
 bench:
 	$(PYTHON) -m benchmarks.run_benchmark
+bench-sim:
+	$(PYTHON) -m routemesh.sim.report
+reproduce:
+	$(PYTHON) -m routemesh.sim.report
+	$(PYTHON) site/scripts/export_fixtures.py
+site-fixtures:
+	$(PYTHON) site/scripts/export_fixtures.py

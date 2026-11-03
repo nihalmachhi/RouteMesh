@@ -25,6 +25,7 @@ async def list_backends(request: Request) -> list[dict[str, object]]:
                 "health_state": "HEALTHY" if item.healthy else "UNHEALTHY",
                 "circuit_state": request.app.state.router.breakers[item.backend_id].state,
                 "in_flight": item.in_flight,
+                "backend_reported_in_flight": item.backend_reported_in_flight,
                 "routed_requests": request.app.state.router.request_counts[item.backend_id],
                 "ewma_latency_ms": item.ewma_latency_ms,
                 "error_rate": item.error_rate,

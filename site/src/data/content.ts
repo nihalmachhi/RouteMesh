@@ -156,9 +156,9 @@ export const content = {
     lead: "RouteMesh is a small, single-process reverse proxy for learning how routing and resilience policies behave.",
     cards: [
       {
-        title: "Three routing policies",
-        text: "Round-robin, least-connections, and latency-aware selection share a pure policy interface.",
-        icon: "route", span: "wide", tags: ["round-robin", "least-connections", "latency-aware"],
+        title: "Policy zoo + bandits",
+        text: "Five direct routing policies plus epsilon-greedy, UCB1, and Thompson selectors over those policies.",
+        icon: "route", span: "wide", tags: ["P2C", "weighted", "bandit routing"],
       },
       {
         title: "Health-aware filtering",
@@ -176,14 +176,19 @@ export const content = {
         icon: "retry", span: "normal", tags: ["bounded attempts", "safe-method rules"],
       },
       {
+        title: "Safe request hedging",
+        text: "An opt-in delayed duplicate can race an alternate for bodyless GET and HEAD requests; it consumes the same bounded retry budget.",
+        icon: "pulse", span: "normal", tags: ["opt in", "canceled loser"],
+      },
+      {
         title: "Backpressure",
         text: "The proxy rejects new work after its configured in-flight request limit is reached.",
         icon: "limit", span: "normal", tags: ["non-blocking admission"],
       },
       {
         title: "Prometheus metrics",
-        text: "Request totals, duration, decisions, and in-flight counts are exposed for inspection.",
-        icon: "metrics", span: "normal", tags: ["counters", "histograms", "gauges"],
+        text: "Request totals, duration, decisions, and in-flight counts are exposed behind the operations token.",
+        icon: "metrics", span: "normal", tags: ["separate port", "token protected"],
       },
       {
         title: "Decision event feed",
@@ -191,9 +196,19 @@ export const content = {
         icon: "events", span: "normal", tags: ["server-sent events"],
       },
       {
+        title: "Streaming proxy",
+        text: "Uploads and downloads stream through the proxy, with early request caps, raw compressed bytes, and repeated headers preserved.",
+        icon: "database", span: "normal", tags: ["gzip", "Set-Cookie", "bounded body"],
+      },
+      {
+        title: "Service graph and log signals",
+        text: "Analyze retry amplification, dependency blast radius, critical paths, normalized request paths, and deterministic log templates.",
+        icon: "chart", span: "wide", tags: ["DAG", "Drain-style clustering", "generated evaluation"],
+      },
+      {
         title: "Not in this release",
-        text: "This release buffers bounded request and response bodies. It is not a production service mesh.",
-        icon: "scope", span: "full", tags: ["no WebSockets", "no TLS termination", "no dynamic discovery"],
+        text: "RouteMesh is a single-process lab proxy; it does not provide production service-mesh guarantees.",
+        icon: "scope", span: "full", tags: ["no WebSockets", "no TLS termination", "no dynamic discovery", "no computer vision"],
       },
     ],
   },
@@ -240,11 +255,11 @@ export const content = {
     },
     {
       question: "Which policies are implemented today?",
-      answer: "The current registry contains round-robin, least-connections, and latency-aware policies. The browser lab uses the same selection rules for these three policies.",
+      answer: "The registry contains round-robin, least-connections, latency-aware, P2C, weighted round-robin, and three bandit selectors that learn among those policies. The browser lab mirrors the first four direct policies; weighted and bandit policies run in the Python proxy.",
     },
     {
       question: "How does latency-aware scoring work?",
-      answer: "It min-max normalizes EWMA latency, CPU, error rate, and in-flight work, then applies configured weights. It is an explicit heuristic, not machine learning.",
+      answer: "It scales latency, CPU, error rate, and in-flight work against bounded reference ranges, then applies configured weights. It is an explicit heuristic, not machine learning.",
     },
     {
       question: "What does the browser lab simulate?",

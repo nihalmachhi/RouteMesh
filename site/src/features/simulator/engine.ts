@@ -1,4 +1,8 @@
-export type PolicyName = "round_robin" | "least_connections" | "latency_aware";
+export type PolicyName =
+  | "round_robin"
+  | "least_connections"
+  | "latency_aware"
+  | "p2c_peak_ewma";
 
 export interface BackendSignal {
   backend_id: string;
@@ -79,14 +83,6 @@ export class NoHealthyBackendError extends Error {
   }
 }
 
-function normalize(values: number[]): number[] {
-  if (values.length === 0) return [];
-  const low = Math.min(...values);
-  const high = Math.max(...values);
-  if (high === low) return values.map(() => 0);
-  return values.map((value) => (value - low) / (high - low));
-}
-
 export function selectBackend(
   policy: PolicyName,
   candidates: BackendSignal[],
@@ -146,23 +142,60 @@ export function selectBackend(
     };
   }
 
-  const latencies = normalize(eligible.map((candidate) => candidate.ewma_latency_ms));
-  const cpu = normalize(eligible.map((candidate) => candidate.cpu_percent));
-  const errors = normalize(eligible.map((candidate) => candidate.error_rate));
-  const loads = normalize(eligible.map((candidate) => candidate.in_flight));
+  if (policy === "p2c_peak_ewma") {
+    let hash = 2166136261;
+    for (const byte of new TextEncoder().encode(requestId + ":" + rotation)) {
+      hash = Math.imul(hash ^ byte, 16777619) >>> 0;
+    }
+    const first = hash % eligible.length;
+    const pair = [eligible[first]!, eligible[(first + 1) % eligible.length]!];
+    scores = pair.map((candidate) => ({
+      backend_id: candidate.backend_id,
+      score:
+        (weights.w_latency ?? 0.5) *
+          (candidate.ewma_latency_ms / (candidate.ewma_latency_ms + 100)) +
+        (weights.w_in_flight ?? 0.1) *
+          (candidate.in_flight / (candidate.in_flight + 10)),
+      in_flight: candidate.in_flight,
+      ewma_latency_ms: candidate.ewma_latency_ms,
+      cpu_percent: candidate.cpu_percent,
+      error_rate: candidate.error_rate,
+    }));
+    chosen = scores.slice().sort(
+      (left, right) =>
+        left.score - right.score ||
+        left.in_flight - right.in_flight ||
+        left.backend_id.localeCompare(right.backend_id),
+    )[0]!;
+    return {
+      request_id: requestId,
+      policy,
+      chosen_backend_id: chosen.backend_id,
+      reason:
+        "power-of-two choice: lower peak-EWMA/load score " + chosen.score.toFixed(3),
+      candidates: scores,
+    };
+  }
+
   const loadWeight = weights.w_in_flight ?? 0.1;
-  scores = eligible.map((candidate, index) => ({
-    backend_id: candidate.backend_id,
-    score:
-      weights.w_latency * latencies[index]! +
-      weights.w_cpu * cpu[index]! +
-      weights.w_error * errors[index]! +
-      loadWeight * loads[index]!,
-    in_flight: candidate.in_flight,
-    ewma_latency_ms: candidate.ewma_latency_ms,
-    cpu_percent: candidate.cpu_percent,
-    error_rate: candidate.error_rate,
-  }));
+  scores = eligible.map((candidate) => {
+    const latency = candidate.ewma_latency_ms / (candidate.ewma_latency_ms + 100);
+    const cpu = Math.min(100, Math.max(0, candidate.cpu_percent)) / 100;
+    const error = Math.min(1, Math.max(0, candidate.error_rate));
+    const load = Math.max(0, candidate.in_flight) / (Math.max(0, candidate.in_flight) + 10);
+    return {
+      backend_id: candidate.backend_id,
+      score:
+        (weights.w_latency ?? 0.5) * latency +
+        (weights.w_cpu ?? 0.3) * cpu +
+        (weights.w_error ?? 0.2) * error +
+        loadWeight * load,
+      in_flight: candidate.in_flight,
+      ewma_latency_ms: candidate.ewma_latency_ms,
+      cpu_percent: candidate.cpu_percent,
+      error_rate: candidate.error_rate,
+    };
+  });
   const ranked = scores.slice().sort(
     (left, right) =>
       left.score - right.score ||

@@ -1,0 +1,119 @@
+{
+  "policy": "p2c_peak_ewma",
+  "backends": [
+    {
+      "backend_id": "backend-a",
+      "url": "http://backend-a:9001",
+      "healthy": true,
+      "circuit_state": "closed",
+      "in_flight": 0,
+      "ewma_latency_ms": 24.0,
+      "cpu_percent": 22.0,
+      "error_rate": 0.02,
+      "failure_rate": 0.01
+    },
+    {
+      "backend_id": "backend-b",
+      "url": "http://backend-b:9002",
+      "healthy": true,
+      "circuit_state": "closed",
+      "in_flight": 0,
+      "ewma_latency_ms": 58.0,
+      "cpu_percent": 55.0,
+      "error_rate": 0.04,
+      "failure_rate": 0.04
+    },
+    {
+      "backend_id": "backend-c",
+      "url": "http://backend-c:9003",
+      "healthy": true,
+      "circuit_state": "closed",
+      "in_flight": 0,
+      "ewma_latency_ms": 35.0,
+      "cpu_percent": 34.0,
+      "error_rate": 0.03,
+      "failure_rate": 0.02
+    }
+  ],
+  "request_count": 60,
+  "arrival_rate": 30,
+  "seed": 912,
+  "result": {
+    "policy": "p2c_peak_ewma",
+    "total": 60,
+    "errors": 0,
+    "error_rate": 0.0,
+    "p50_ms": 26.49602674262971,
+    "p99_ms": 43.918432348082035,
+    "shares": [
+      {
+        "backend_id": "backend-a",
+        "count": 44,
+        "percentage": 73.33333333333333,
+        "circuit_state": "closed"
+      },
+      {
+        "backend_id": "backend-b",
+        "count": 0,
+        "percentage": 0.0,
+        "circuit_state": "closed"
+      },
+      {
+        "backend_id": "backend-c",
+        "count": 16,
+        "percentage": 26.666666666666668,
+        "circuit_state": "closed"
+      }
+    ],
+    "feed": [
+      {
+        "request_id": "req-060",
+        "backend_id": "backend-c",
+        "policy": "p2c_peak_ewma",
+        "reason": "power-of-two choice: lower peak-EWMA/load score 0.130",
+        "succeeded": true,
+        "latency_ms": 35.79155583960693
+      },
+      {
+        "request_id": "req-059",
+        "backend_id": "backend-a",
+        "policy": "p2c_peak_ewma",
+        "reason": "power-of-two choice: lower peak-EWMA/load score 0.097",
+        "succeeded": true,
+        "latency_ms": 24.026415718471707
+      },
+      {
+        "request_id": "req-058",
+        "backend_id": "backend-c",
+        "policy": "p2c_peak_ewma",
+        "reason": "power-of-two choice: lower peak-EWMA/load score 0.139",
+        "succeeded": true,
+        "latency_ms": 34.95291473167576
+      },
+      {
+        "request_id": "req-057",
+        "backend_id": "backend-c",
+        "policy": "p2c_peak_ewma",
+        "reason": "power-of-two choice: lower peak-EWMA/load score 0.130",
+        "succeeded": true,
+        "latency_ms": 43.918432348082035
+      },
+      {
+        "request_id": "req-056",
+        "backend_id": "backend-a",
+        "policy": "p2c_peak_ewma",
+        "reason": "power-of-two choice: lower peak-EWMA/load score 0.097",
+        "succeeded": true,
+        "latency_ms": 29.53704838663012
+      },
+      {
+        "request_id": "req-055",
+        "backend_id": "backend-a",
+        "policy": "p2c_peak_ewma",
+        "reason": "power-of-two choice: lower peak-EWMA/load score 0.097",
+        "succeeded": true,
+        "latency_ms": 23.090154105457664
+      }
+    ]
+  }
+}

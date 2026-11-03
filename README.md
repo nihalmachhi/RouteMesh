@@ -1,99 +1,79 @@
-<p align="center">
-  <img src="assets/readme-icon.png" alt="RouteMesh icon" width="112" />
-</p>
+<p align="center"><img src="assets/readme-icon.png" alt="RouteMesh icon" width="96"></p>
 
 <h1 align="center">RouteMesh</h1>
 
-RouteMesh is an observable application-level reverse proxy. It selects a backend per request using health, circuit state, latency, CPU, errors, and in-flight work. It records why each selection happened and exposes metrics for policy comparisons.
+<p align="center">An observable application-level reverse proxy with explainable routing decisions and bounded resilience controls.</p>
 
-## Learning guide
+<p align="center">
+  <a href="https://github.com/nihalmachhi/RouteMesh/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/nihalmachhi/RouteMesh/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
+  <img alt="Python 3.12+" src="https://img.shields.io/badge/Python-3.12%2B-3776AB">
+</p>
 
-See [the architecture guide](docs/architecture.md) for request flow, system boundaries, and design trade-offs.
-
-## How it works
-
-RouteMesh filters out unhealthy or circuit-open backends, applies the selected routing policy to the remaining candidates, and forwards the request with a recorded selection reason.
-
-
-
-The demo compares round-robin, least-connections, and latency-aware policies using explicit heuristics. It is a single-process learning system, not a distributed control plane or a production benchmark.
+RouteMesh routes requests to configured healthy backends, records why it chose them, and exposes operational controls on a separate, authenticated port. The proxy is designed as a lab and learning project, not a production service mesh.
 
 ## Quick start
 
-Requirements: Docker Desktop with its engine running.
+Requirements: Docker Desktop with its Linux engine running.
 
-1. Copy `.env.example` to `.env` and replace the placeholder with a long random admin token. `.env` is ignored by Git. The admin API fails closed until this token is configured.
-2. Start the demo: `docker compose up --build`.
-3. Open the proxy API docs at http://localhost:8000/docs. The interactive project site is deployed separately from `site/` to GitHub Pages.
+```powershell
+Copy-Item .env.example .env
+# Replace ROUTEMESH_ADMIN_TOKEN in .env with a long random secret.
+docker compose up --build
+```
 
-The stack starts one proxy, three controllable FastAPI backends, and Prometheus. Stop with `docker compose down`. No benchmark numbers are checked in as if measured; use `make bench` to create a local run.
+- Proxy data port: `http://localhost:8000`
+- Operations API and Prometheus metrics: `http://127.0.0.1:9000` (send `X-RouteMesh-Admin-Token`)
+- Prometheus: `http://127.0.0.1:9090`
+- Interactive site: [nihalmachhi.github.io/RouteMesh](https://nihalmachhi.github.io/RouteMesh/)
 
-## Portfolio site deployment
+Compose publishes the operations port only on host loopback. The proxy data port does not reserve `/admin`, `/metrics`, `/healthz`, or `/docs`; those paths are not part of its API. The project has no built-in Swagger docs.
 
-The project site in `site/` is built and deployed to GitHub Pages by `.github/workflows/site.yml` on pushes to `main`. To let the workflow enable Pages automatically on a repository where Pages has not been configured yet, add a repository Actions secret named `PAGES_ENABLEMENT_TOKEN`. Use a repository-scoped fine-grained token with Pages write and Administration write permissions. The workflow uses it only in `actions/configure-pages`; the Pages artifact deployment uses GitHub Actions' OIDC and `GITHUB_TOKEN` permissions.
+## Claims → proof
 
-## Request flow
+| Claim | Evidence |
+| --- | --- |
+| Compressed response bytes and repeated headers are preserved | `tests/integration/test_forwarder_integration.py` |
+| Uploads and downloads stream; oversized requests are rejected while reading | `tests/integration/test_forwarder_integration.py` |
+| Retry credit expires with an injected clock | `tests/unit/test_retry_budget.py` |
+| Operations routes fail closed and use a distinct listener | `tests/integration/test_admin_routes.py` |
+| Python and browser policy/simulator outputs agree on seeded fixtures | `site/src/features/simulator/engine.test.ts` |
+| Policy, tuning, and service-graph reports are reproducible | `make reproduce`; generated JSON in `benchmarks/results/` and `site/src/data/` |
+
+Simulator output is generated from synthetic backend signals. It illustrates relative behavior under the model; it is not a real throughput or production latency measurement. Run `make bench` against the local Compose stack for machine-specific Locust measurements.
+
+## Request path
 
 ```mermaid
 flowchart LR
-    C[Client] --> P[RouteMesh Proxy]
-    P -->|filter healthy + closed/probe circuits| R[Router]
-    R -->|pure policy decision + reason| F[HTTPX Forwarder]
-    F --> A[Backend A]
-    F --> B[Backend B]
-    F --> D[Backend C]
-    A --> H[Health checks]
-    B --> H
-    D --> H
-    P --> M[/metrics Prometheus/]
-    P --> X[/admin API and SSE/]
-    X --> UI[React Dashboard]
-    H --> R
+    C[Client] --> P[Proxy :8000]
+    P --> A[Admission and routing policy]
+    A --> F[Streaming HTTP forwarder]
+    F --> B[Configured backends]
+    B --> H[Health checks and circuit breakers]
+    H --> A
+    P --> M[In-process metrics]
+    O[Operations app :9000] --> M
+    O --> R[Admin API and decision stream]
+    R --> UI[Local dashboard]
+    S[Seeded simulator] -. shared policy rules .-> A
 ```
-
-## Structure
-
-- `src/routemesh/proxy`: FastAPI app, catch-all proxy route, router, forwarder, and backpressure.
-- `src/routemesh/admin`: read-only operations, guarded controls, demo fault injection, and authentication.
-- `src/routemesh/core`: settings, errors, logging, and clock utilities.
-- `src/routemesh/policies`: pure round-robin, least-connections, and latency-aware strategies.
-- `src/routemesh/discovery`: validated YAML and backend state registry.
-- `src/routemesh/health`: active checks and circuit breaker.
-- `src/routemesh/metrics`: Prometheus instruments, EWMA, rolling windows, decisions, SSE fanout.
-- `src/routemesh/demo_backends`: demo-only controllable backends.
-- `benchmarks`: Locust workload and report tooling.
-- `site`: TypeScript React project site and routing simulator, deployed separately on GitHub Pages.
-- `tests`: deterministic unit tests and forwarding integration tests.
-- `configs`: routing and Prometheus settings.
-- `docs`: architecture, trade-offs, and benchmark methodology.
-
-## Try the routing controls
-
-Use the dashboard to switch policy or make one backend slow, failing, or unavailable. Send traffic through the proxy, for example:
-
-```powershell
-1..50 | ForEach-Object { Invoke-WebRequest -Uri http://localhost:8000/demo -Method GET }
-```
-
-The admin decision feed shows the chosen backend and reason. Set `ROUTEMESH_ADMIN_TOKEN` in your local `.env` and send it as `X-RouteMesh-Admin-Token` to access `/admin/*`. Metrics are at http://localhost:8000/metrics and Prometheus at http://localhost:9090.
 
 ## Development
 
-- `make install`: install package and development tools.
-- `make lint`: Ruff lint.
-- `make format`: Ruff formatter.
-- `make typecheck`: strict mypy.
-- `make test`: pytest.
-- `make check`: lint, type check, and tests.
-- `make bench`: run identical 60-second Locust samples for each policy and create raw CSV, JSON, and a p95 chart in `output/benchmarks`.
+```sh
+uv sync --all-extras
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src
+uv run pytest -q --cov=routemesh --cov-fail-under=85
+make reproduce
+```
 
-Configuration is validated from `configs/routemesh.yaml`; `ROUTEMESH_CONFIG_PATH` selects another file. Environment variables use the `ROUTEMESH_` prefix. Configure `ROUTEMESH_ADMIN_TOKEN` before using any `/admin/*` endpoint. Admin reads and mutations both fail closed when no token is configured. Send it using the `X-RouteMesh-Admin-Token` header.
+The proxy only forwards to upstreams in `configs/routemesh.yaml`; client input cannot select a backend URL. Configure `ROUTEMESH_ADMIN_TOKEN` before using admin or metrics routes. Locally the operations listener binds to `127.0.0.1`; Compose binds inside its private network and publishes host access on `127.0.0.1:9000`.
 
-## Reliability and limits
+## Boundaries
 
-Retries are limited to GET, HEAD, OPTIONS, PUT, DELETE, or requests with an Idempotency-Key, and share a configurable global retry budget. Request bodies are bounded by `ROUTEMESH_MAX_BODY_BYTES`. Hop-by-hop headers are removed. The v1 path buffers bounded bodies; large streaming uploads, TLS termination, HTTP/2, WebSocket proxying, and dynamic cloud discovery are out of scope.
+RouteMesh is a single-process learning proxy with static backend configuration and in-memory state. WebSocket proxying, TLS termination, multi-process control-plane state, and dynamic cloud service discovery are outside its scope. Computer vision is intentionally excluded because this project has no image input or vision problem.
 
-Latency-aware scoring uses normalized EWMA latency, reported CPU, rolling error rate, and a small in-flight penalty. A score is an explicit heuristic, not machine learning. The in-memory registry and decision stream are process-local; use one proxy replica for this demo. PostgreSQL, a distributed control plane, and production-grade throughput are intentionally out of scope.
-
-
-
+See [architecture](docs/architecture.md), [policies](docs/policies.md), [simulator methodology](docs/simulator.md), [benchmark methodology](docs/benchmarks.md), and [security boundaries](docs/threat-model.md). Licensed under [MIT](LICENSE).

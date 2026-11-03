@@ -21,7 +21,8 @@ def request_with_id(value: str) -> Request:
 
 
 def test_request_id_preserves_bounded_safe_values():
-    assert get_request_id(request_with_id("trace-1.a:9")) == "trace-1.a:9"
+    assert get_request_id(request_with_id("trace-1.a_9")) == "trace-1.a_9"
+    assert get_request_id(request_with_id("trace-1.a:9")) != "trace-1.a:9"
     assert get_request_id(request_with_id("trace-1.a/b")) != "trace-1.a/b"
 
 

@@ -1,14 +1,21 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./__fixtures__/policy-decisions.json";
+import simulationFixture from "./__fixtures__/simulation-standard-001.json";
 import {
   NoHealthyBackendError,
   runSimulation,
   selectBackend,
   type BackendSignal,
   type PolicyName,
+  type SimulationResult,
 } from "./engine";
 
-const policies: PolicyName[] = ["round_robin", "least_connections", "latency_aware"];
+const policies: PolicyName[] = [
+  "round_robin",
+  "least_connections",
+  "latency_aware",
+  "p2c_peak_ewma",
+];
 const backends = fixture.backends as BackendSignal[];
 
 describe("RouteMesh policy parity fixture", () => {
@@ -35,6 +42,42 @@ describe("RouteMesh policy parity fixture", () => {
 });
 
 describe("selection boundaries and local load simulation", () => {
+  it("matches the Python simulator output for a seeded workload", () => {
+    const input = simulationFixture as {
+      policy: PolicyName;
+      backends: BackendSignal[];
+      request_count: number;
+      arrival_rate: number;
+      seed: number;
+      result: {
+        policy: PolicyName;
+        total: number;
+        errors: number;
+        error_rate: number;
+        p50_ms: number;
+        p99_ms: number;
+        shares: SimulationResult["shares"];
+        feed: SimulationResult["feed"];
+      };
+    };
+    const result = runSimulation({
+      policy: input.policy,
+      backends: input.backends,
+      requestCount: input.request_count,
+      arrivalRate: input.arrival_rate,
+      seed: input.seed,
+    });
+    expect(result).toEqual({
+      policy: input.result.policy,
+      total: input.result.total,
+      errors: input.result.errors,
+      errorRate: input.result.error_rate,
+      p50: input.result.p50_ms,
+      p99: input.result.p99_ms,
+      shares: input.result.shares,
+      feed: input.result.feed,
+    });
+  });
   it("filters unhealthy and open-circuit candidates before policy selection", () => {
     const candidates = [
       ...backends,

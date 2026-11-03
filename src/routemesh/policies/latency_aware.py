@@ -14,6 +14,16 @@ def normalize(values: list[float]) -> list[float]:
     return [(value - low) / span for value in values]
 
 
+def latency_signal(snapshot: BackendSnapshot, at: datetime, prior_ms: float = 50.0) -> float:
+    """Bound latency to a stable scale and decay stale samples toward a neutral prior."""
+    value = snapshot.ewma_latency_ms or prior_ms
+    if snapshot.latency_updated_at is not None:
+        age_seconds = max(0.0, (at - snapshot.latency_updated_at).total_seconds())
+        decay = 0.5 ** (age_seconds / 30.0)
+        value = prior_ms + (value - prior_ms) * decay
+    return value / (value + 100.0)
+
+
 class LatencyAwarePolicy:
     """Score candidates using normalized telemetry and an in-flight penalty."""
 
@@ -30,19 +40,19 @@ class LatencyAwarePolicy:
     ) -> RoutingDecision:
         """Choose the lowest explainable score with stable tie-breaking."""
         ordered = sorted(candidates, key=lambda item: item.backend_id)
-        latencies = normalize([item.ewma_latency_ms for item in ordered])
-        cpu = normalize([item.cpu_percent for item in ordered])
-        errors = normalize([item.error_rate for item in ordered])
-        loads = normalize([float(item.in_flight) for item in ordered])
+        latencies = [latency_signal(item, at) for item in ordered]
+        cpu = [min(100.0, max(0.0, item.cpu_percent)) / 100.0 for item in ordered]
+        errors = [min(1.0, max(0.0, item.error_rate)) for item in ordered]
+        loads = [max(0, item.in_flight) / (max(0, item.in_flight) + 10.0) for item in ordered]
         load_weight = weights.get("w_in_flight", 0.1)
         rows = []
         for item, latency, cpu_value, error, load in zip(
             ordered, latencies, cpu, errors, loads, strict=True
         ):
             score = (
-                weights["w_latency"] * latency
-                + weights["w_cpu"] * cpu_value
-                + weights["w_error"] * error
+                weights.get("w_latency", 0.5) * latency
+                + weights.get("w_cpu", 0.3) * cpu_value
+                + weights.get("w_error", 0.2) * error
                 + load_weight * load
             )
             rows.append(

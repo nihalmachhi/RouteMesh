@@ -41,6 +41,7 @@ site/dist/
 output/benchmarks/*
 !output/benchmarks/results.md
 benchmarks/results/*
+!benchmarks/results/policy-comparison.json
 
 # Logs and temporary files
 *.log

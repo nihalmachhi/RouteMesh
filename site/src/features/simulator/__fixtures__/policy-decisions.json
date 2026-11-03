@@ -84,22 +84,38 @@
     },
     "latency_aware": {
       "chosen_backend_id": "backend-a",
-      "reason": "lowest weighted score 0.000; in-flight penalty mitigates herding",
+      "reason": "lowest weighted score 0.183; in-flight penalty mitigates herding",
       "candidates": [
         {
           "backend_id": "backend-a",
-          "score": 0.0,
+          "score": 0.18344086,
           "in_flight": 2
         },
         {
           "backend_id": "backend-b",
-          "score": 1.1,
+          "score": 0.397720774,
           "in_flight": 7
         },
         {
           "backend_id": "backend-c",
-          "score": 0.410855615,
+          "score": 0.266201058,
           "in_flight": 4
+        }
+      ]
+    },
+    "p2c_peak_ewma": {
+      "chosen_backend_id": "backend-a",
+      "reason": "power-of-two choice: lower peak-EWMA/load score 0.113",
+      "candidates": [
+        {
+          "backend_id": "backend-c",
+          "score": 0.158201058,
+          "in_flight": 4
+        },
+        {
+          "backend_id": "backend-a",
+          "score": 0.11344086,
+          "in_flight": 2
         }
       ]
     }

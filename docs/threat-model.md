@@ -3,9 +3,10 @@
 RouteMesh is a lab and learning reverse proxy. The proxy forwards only to
 backends loaded from the validated local configuration; clients cannot choose
 an upstream URL. Do not expose the demo backend control API or operations API
-to an untrusted network. Admin endpoints fail closed when no token is
-configured. Configure a strong secret and restrict network access to the
-operations port.
+to an untrusted network. Admin reads, writes, and metrics fail closed when no
+token is configured. Configure a strong secret. Local mode defaults to a
+loopback operations listener; Compose binds inside its private network and
+publishes host access only on `127.0.0.1`.
 
 The current process uses an in-memory backend registry and telemetry. It is not
 a multi-tenant or production service mesh, and it does not provide TLS

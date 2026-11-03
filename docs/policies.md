@@ -1,11 +1,9 @@
 # Routing policies
 
-The proxy currently offers round-robin, least-connections, and latency-aware
-selection. The first two use measured proxy in-flight counts and stable backend
-ordering. Latency-aware selection scores the latest registry snapshot using
-configured latency, CPU, error, and in-flight weights; it is a heuristic, not a
-learned predictor.
+The proxy registry provides round-robin, least-connections, latency-aware, P2C with a bounded latency/load score, and smooth weighted round-robin. It also provides epsilon-greedy, UCB1, and Thompson-sampling selectors that choose among those five policies and learn from request outcomes. Policy inputs use proxy-measured in-flight counts, bounded health signals, and stable backend ordering. Policy decisions include a reason and candidate scores.
 
-Computer vision is intentionally excluded. RouteMesh routes HTTP requests and
-has no image understanding problem. Binary request and response bodies are
-transport data; forwarding them byte-for-byte is a correctness requirement.
+`BanditRouter` is the bounded exploration utility used by those selectors. Its rewards are a simple success/latency signal from the proxy, not an application-specific objective. The same applies to rendezvous hashing: it is a tested helper rather than a registered routing mode.
+
+Latency-aware weights are validated from YAML and selected through the admin API. The selector is a deterministic heuristic, not a learned predictor. `make reproduce` compares the policies on the same generated synthetic scenarios; results do not establish production performance.
+
+Computer vision is intentionally excluded: routing HTTP traffic has no image understanding input. Binary and large bodies are tested as transport correctness cases.

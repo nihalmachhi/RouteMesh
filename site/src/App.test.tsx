@@ -22,11 +22,18 @@ describe("RouteMesh portfolio site", () => {
     fireEvent.change(screen.getByRole("combobox", { name: /routing policy/i }), {
       target: { value: "least_connections" },
     });
-    expect(screen.getByRole("heading", { name: /least connections/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { name: /least connections/i })).toHaveLength(2);
 
     const faq = screen.getByText(/which policies are implemented today/i);
     expect(faq.closest("details")).not.toHaveAttribute("open");
     fireEvent.click(faq);
     expect(faq.closest("details")).toHaveAttribute("open");
+  });
+
+  it("shows the generated service graph impact when a dependency fails", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Fail inventory" }));
+    expect(screen.getByText(/Affected callers:/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/12×/)).toHaveLength(2);
   });
 });

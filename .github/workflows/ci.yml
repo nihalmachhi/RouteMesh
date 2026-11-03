@@ -11,11 +11,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - run: uv sync --frozen --extra dev
-      - run: uv run ruff check src tests
-      - run: uv run ruff format --check src tests
+      - run: uv sync --frozen --extra dev --all-extras
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
       - run: uv run mypy src
-      - run: uv run pytest -q
+      - run: uv run pytest -q --cov=routemesh --cov-fail-under=85
+      - run: uv run python -m routemesh.sim.report
+      - run: uv run python site/scripts/export_fixtures.py
+      - run: git diff --exit-code -- benchmarks/results/policy-comparison.json site/src/data/results.generated.json site/src/features/simulator/__fixtures__/
+      - run: docker compose config -q && docker compose build
   site:
     runs-on: ubuntu-latest
     steps:

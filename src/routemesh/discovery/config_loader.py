@@ -19,15 +19,28 @@ class BackendYaml(BaseModel):
 
     id: str = Field(min_length=1, pattern=r"^[a-zA-Z0-9_-]+$")
     url: str = Field(min_length=1)
+    weight: int = Field(default=1, ge=1, le=100)
 
 
 class RouteConfig(BaseModel):
     """Validated application policy and resilience configuration."""
 
-    policy: Literal["round_robin", "least_connections", "latency_aware"]
+    policy: Literal[
+        "round_robin",
+        "least_connections",
+        "latency_aware",
+        "p2c_peak_ewma",
+        "weighted_round_robin",
+        "bandit_epsilon_greedy",
+        "bandit_ucb1",
+        "bandit_thompson",
+    ]
     timeouts: dict[str, float]
     backpressure: dict[str, int]
     retries: dict[str, float | int]
+    hedging: dict[str, bool | float] = Field(
+        default_factory=lambda: {"enabled": False, "delay_ms": 50.0}
+    )
     health: dict[str, float | int]
     circuit_breaker: dict[str, float | int]
     scoring: dict[str, float]
@@ -37,7 +50,7 @@ class RouteConfig(BaseModel):
     def validate_sections(self) -> "RouteConfig":
         """Fail at startup when any required operational setting is absent."""
         required: RequiredKeys = {
-            "timeouts": ("connect_s", "read_s"),
+            "timeouts": ("connect_s", "read_s", "total_s"),
             "backpressure": ("max_in_flight",),
             "retries": ("max_attempts", "budget_ratio"),
             "health": ("interval_s", "failure_threshold", "recovery_successes"),
@@ -62,6 +75,8 @@ class RouteConfig(BaseModel):
             raise ValueError("max_in_flight must be positive")
         if int(self.retries["max_attempts"]) < 1:
             raise ValueError("max_attempts must be positive")
+        if float(self.hedging.get("delay_ms", 0)) <= 0:
+            raise ValueError("hedge delay must be positive")
         if not 0 <= float(self.retries["budget_ratio"]) <= 1:
             raise ValueError("retry budget ratio must be between zero and one")
         if not 0 <= float(self.circuit_breaker["error_rate"]) <= 1:
@@ -71,6 +86,8 @@ class RouteConfig(BaseModel):
         weights = [float(self.scoring[key]) for key in ("w_latency", "w_cpu", "w_error")]
         if min(weights) < 0 or abs(sum(weights) - 1.0) > 1e-6:
             raise ValueError("latency, CPU, and error weights must be non-negative and sum to one")
+        if float(self.scoring.get("w_in_flight", 0.1)) < 0:
+            raise ValueError("in-flight weight must be non-negative")
         for backend in self.backends:
             parsed = urlparse(backend.url)
             if parsed.scheme not in {"http", "https"} or not parsed.netloc:
@@ -88,5 +105,7 @@ def load_config(path: Path) -> tuple[RouteConfig, list[BackendConfig]]:
         config = RouteConfig.model_validate(data)
     except (OSError, yaml.YAMLError, ValidationError, TypeError, ValueError) as exc:
         raise ConfigurationError(f"cannot load RouteMesh configuration: {exc}") from exc
-    backends = [BackendConfig(item.id, item.url.rstrip("/")) for item in config.backends]
+    backends = [
+        BackendConfig(item.id, item.url.rstrip("/"), item.weight) for item in config.backends
+    ]
     return config, backends
