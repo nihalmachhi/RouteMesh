@@ -6,8 +6,8 @@ import logging
 import httpx
 from fastapi import Request, Response
 
-from routemesh.common.clock import Clock, SystemClock
-from routemesh.common.errors import NoHealthyBackend
+from routemesh.core.clock import Clock, SystemClock
+from routemesh.core.errors import NoHealthyBackend
 from routemesh.discovery.config_loader import RouteConfig
 from routemesh.discovery.registry import BackendRegistry
 from routemesh.health.circuit_breaker import CircuitBreaker

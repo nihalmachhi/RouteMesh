@@ -23,7 +23,7 @@ The proxy buffers request bodies up to `ROUTEMESH_MAX_BODY_BYTES`; streaming upl
 - `src/routemesh/discovery`: YAML loading and in-memory backend registry.
 - `src/routemesh/health`: active health checks and circuit breaker.
 - `src/routemesh/metrics`: Prometheus metrics, EWMA, rolling windows, bounded decision log, and SSE.
-- `src/routemesh/test_backends`: controllable demo backends.
-- `src/routemesh/benchmarks`: Locust scenarios and report generation.
+- `src/routemesh/demo_backends`: controllable demo backends.
+- `benchmarks`: Locust scenarios and report generation.
 - `site`: GitHub Pages project site and interactive routing simulator.
 - `tests`: unit and integration tests.

@@ -3,7 +3,7 @@
 from collections import deque
 from dataclasses import dataclass, field
 
-from routemesh.common.clock import Clock, SystemClock
+from routemesh.core.clock import Clock, SystemClock
 
 
 @dataclass(slots=True)

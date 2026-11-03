@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 import yaml
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
-from routemesh.common.errors import ConfigurationError
+from routemesh.core.errors import ConfigurationError
 from routemesh.discovery.models import BackendConfig
 
 RequiredKeys = dict[str, tuple[str, ...]]

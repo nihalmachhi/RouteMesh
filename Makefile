@@ -18,4 +18,4 @@ up:
 down:
 	docker compose down
 bench:
-	$(PYTHON) -m routemesh.benchmarks.run_benchmark
+	$(PYTHON) -m benchmarks.run_benchmark

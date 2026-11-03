@@ -10,9 +10,9 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
 
-from routemesh.common.errors import ConfigurationError
-from routemesh.common.logging import configure_logging
-from routemesh.common.settings import Settings, get_settings
+from routemesh.core.errors import ConfigurationError
+from routemesh.core.logging import configure_logging
+from routemesh.core.settings import Settings, get_settings
 from routemesh.discovery.config_loader import load_config
 from routemesh.discovery.registry import BackendRegistry
 from routemesh.health.checker import HealthChecker

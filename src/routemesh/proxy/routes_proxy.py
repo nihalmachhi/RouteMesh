@@ -3,10 +3,11 @@
 import re
 from uuid import uuid4
 
+import httpx
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
 
-from routemesh.common.errors import NoHealthyBackend
+from routemesh.core.errors import NoHealthyBackend
 from routemesh.proxy.backpressure import BackpressureLimiter
 from routemesh.proxy.router import ProxyRouter
 
@@ -35,9 +36,7 @@ async def proxy_request(request: Request, path: str = "") -> Response:
             status_code=503,
             headers={"Retry-After": "1", "X-Request-ID": request_id},
         )
-    except Exception as exc:
-        import httpx
-
+    except httpx.HTTPError as exc:
         if isinstance(exc, httpx.TimeoutException):
             status_code = 504
         elif isinstance(exc, httpx.HTTPError):

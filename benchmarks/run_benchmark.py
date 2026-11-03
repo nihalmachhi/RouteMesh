@@ -10,7 +10,7 @@ from pathlib import Path
 
 import httpx
 
-from routemesh.benchmarks.report import read_summary, render_comparison
+from benchmarks.report import read_summary, render_comparison
 
 POLICIES = ("round_robin", "least_connections", "latency_aware")
 API_URL = os.getenv("ROUTEMESH_BENCHMARK_API", "http://localhost:8000")

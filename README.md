@@ -53,13 +53,15 @@ flowchart LR
 
 ## Structure
 
-- `src/routemesh/proxy`: FastAPI app, catch-all proxy route, router, forwarder, backpressure, admin API.
+- `src/routemesh/proxy`: FastAPI app, catch-all proxy route, router, forwarder, and backpressure.
+- `src/routemesh/admin`: read-only operations, guarded controls, demo fault injection, and authentication.
+- `src/routemesh/core`: settings, errors, logging, and clock utilities.
 - `src/routemesh/policies`: pure round-robin, least-connections, and latency-aware strategies.
 - `src/routemesh/discovery`: validated YAML and backend state registry.
 - `src/routemesh/health`: active checks and circuit breaker.
 - `src/routemesh/metrics`: Prometheus instruments, EWMA, rolling windows, decisions, SSE fanout.
-- `src/routemesh/test_backends`: demo-only controllable backends.
-- `src/routemesh/benchmarks`: Locust workload and report tooling.
+- `src/routemesh/demo_backends`: demo-only controllable backends.
+- `benchmarks`: Locust workload and report tooling.
 - `site`: TypeScript React project site and routing simulator, deployed separately on GitHub Pages.
 - `tests`: deterministic unit tests and forwarding integration tests.
 - `configs`: routing and Prometheus settings.

@@ -34,11 +34,13 @@ htmlcov/
 build/
 dist/
 node_modules/
+site/dist/
 *.tsbuildinfo
 
 # Generated benchmark output
 output/benchmarks/*
 !output/benchmarks/results.md
+benchmarks/results/*
 
 # Logs and temporary files
 *.log

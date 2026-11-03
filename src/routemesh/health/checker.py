@@ -6,7 +6,7 @@ from contextlib import suppress
 
 import httpx
 
-from routemesh.common.clock import Clock, SystemClock
+from routemesh.core.clock import Clock, SystemClock
 from routemesh.discovery.registry import BackendRegistry
 
 logger = logging.getLogger(__name__)

@@ -4,7 +4,7 @@ import pytest
 from fastapi import HTTPException
 from starlette.requests import Request
 
-from routemesh.common.settings import Settings
+from routemesh.core.settings import Settings
 from routemesh.proxy.routes_admin import require_admin
 
 

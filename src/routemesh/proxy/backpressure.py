@@ -4,7 +4,7 @@ import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from routemesh.common.errors import RouteMeshError
+from routemesh.core.errors import RouteMeshError
 
 
 class Overloaded(RouteMeshError):

@@ -1,6 +1,6 @@
 """Explicit routing policy registry."""
 
-from routemesh.common.errors import ConfigurationError
+from routemesh.core.errors import ConfigurationError
 from routemesh.policies.base import RoutingPolicy
 from routemesh.policies.latency_aware import LatencyAwarePolicy
 from routemesh.policies.least_connections import LeastConnectionsPolicy

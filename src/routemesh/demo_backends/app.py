@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from pydantic import BaseModel, Field
 
-from routemesh.test_backends.behavior import BehaviorState
+from routemesh.demo_backends.behavior import BehaviorState
 
 
 class BehaviorRequest(BaseModel):
